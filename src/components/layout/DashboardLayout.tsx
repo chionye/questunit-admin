@@ -1,9 +1,9 @@
-import { Navigate, Outlet } from 'react-router-dom';
-import { useAuthStore } from '@/stores/authStore';
+import {  Outlet } from 'react-router-dom';
+// import { useAuthStore } from '@/stores/authStore';
 import { Sidebar } from './Sidebar';
 
 export function DashboardLayout() {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  // const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   // if (!isAuthenticated) {
   //   return <Navigate to="/login" replace />;
