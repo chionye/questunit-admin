@@ -3,7 +3,9 @@ import { Users, Box, Wrench, DollarSign, TrendingUp, Clock } from 'lucide-react'
 import { dashboardApi } from '@/api/endpoints';
 import { extractData } from '@/hooks/useApiData';
 import { Header } from '@/components/layout/Header';
-import { DashboardSkeleton } from '@/components/common/Skeleton';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import type { DashboardOverview } from '@/types';
 
 const statCards = [
@@ -14,6 +16,37 @@ const statCards = [
   { key: 'totalBookings', label: 'Total Bookings', icon: Wrench, color: 'bg-indigo-500' },
   { key: 'totalRevenue', label: 'Total Revenue', icon: DollarSign, color: 'bg-emerald-500' },
 ];
+
+function DashboardSkeletonLoader() {
+  return (
+    <div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Card key={i}>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-10 rounded-lg" />
+              </div>
+              <Skeleton className="h-8 w-20" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <Card>
+        <CardContent className="pt-6">
+          <Skeleton className="h-5 w-40 mb-4" />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between py-3">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-6 w-16 rounded-full" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export function DashboardPage() {
   const { data: response, isLoading, error } = useQuery({
@@ -28,15 +61,14 @@ export function DashboardPage() {
       <Header title="Dashboard" subtitle="Overview of your admin panel" />
 
       {isLoading ? (
-        <DashboardSkeleton />
+        <DashboardSkeletonLoader />
       ) : error ? (
-        <div className="bg-white rounded-xl p-8 text-center">
+        <Card className="p-8 text-center">
           <p className="text-red-500">Failed to load dashboard data</p>
           <p className="text-gray-400 text-sm mt-1">Please check your connection and try again</p>
-        </div>
+        </Card>
       ) : (
         <div>
-          {/* Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
             {statCards.map((stat) => {
               const value = overview?.[stat.key as keyof DashboardOverview];
@@ -48,50 +80,42 @@ export function DashboardPage() {
                     : value ?? '—';
 
               return (
-                <div
-                  key={stat.key}
-                  className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-medium text-gray-500">{stat.label}</span>
-                    <div
-                      className={`w-10 h-10 ${stat.color} rounded-lg flex items-center justify-center`}
-                    >
-                      <stat.icon size={20} className="text-white" />
+                <Card key={stat.key} className="hover:shadow-md transition-shadow">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-sm font-medium text-gray-500">{stat.label}</span>
+                      <div className={`w-10 h-10 ${stat.color} rounded-lg flex items-center justify-center`}>
+                        <stat.icon size={20} className="text-white" />
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {String(displayValue)}
-                  </p>
-                </div>
+                    <p className="text-2xl font-bold text-gray-900">{String(displayValue)}</p>
+                  </CardContent>
+                </Card>
               );
             })}
           </div>
 
-          {/* Recent Activity */}
           {overview?.recentActivity && Array.isArray(overview.recentActivity) && overview.recentActivity.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm">
-              <div className="px-6 py-5 border-b border-gray-100">
-                <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
-              </div>
-              <div className="divide-y divide-gray-50">
-                {overview.recentActivity.map((activity, idx) => (
-                  <div key={activity.id || idx} className="px-6 py-4 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{activity.message || activity.type}</p>
-                      {activity.createdAt && (
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {new Date(activity.createdAt).toLocaleString()}
-                        </p>
-                      )}
+            <Card>
+              <CardContent className="pt-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
+                <div className="divide-y divide-gray-100">
+                  {overview.recentActivity.map((activity, idx) => (
+                    <div key={activity.id || idx} className="py-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{activity.message || activity.type}</p>
+                        {activity.createdAt && (
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {new Date(activity.createdAt).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant="secondary">{activity.type}</Badge>
                     </div>
-                    <span className="text-xs font-medium text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">
-                      {activity.type}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
       )}

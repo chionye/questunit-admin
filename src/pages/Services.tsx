@@ -5,9 +5,17 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { servicesApi } from '@/api/endpoints';
 import { extractData, normalizeId } from '@/hooks/useApiData';
 import { Header } from '@/components/layout/Header';
-import { Modal } from '@/components/common/Modal';
-import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { TableSkeleton } from '@/components/common/Skeleton';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import type { Service, CreateServiceRequest, UpdateServiceRequest } from '@/types';
 
 const emptyForm: CreateServiceRequest = {
@@ -18,6 +26,23 @@ const emptyForm: CreateServiceRequest = {
   duration: undefined,
   status: 'active',
 };
+
+function TableSkeletonLoader() {
+  return (
+    <div className="p-4 space-y-4">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex gap-4">
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-5 w-16" />
+          <Skeleton className="h-5 w-20" />
+          <Skeleton className="h-5 w-16" />
+          <Skeleton className="h-5 w-20 ml-auto" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function ServicesPage() {
   const queryClient = useQueryClient();
@@ -35,66 +60,35 @@ export function ServicesPage() {
 
   const createMutation = useMutation({
     mutationFn: (data: CreateServiceRequest) => servicesApi.create(data),
-    onSuccess: () => {
-      toast.success('Service created');
-      queryClient.invalidateQueries({ queryKey: ['services'] });
-      closeModal();
-    },
+    onSuccess: () => { toast.success('Service created'); queryClient.invalidateQueries({ queryKey: ['services'] }); closeModal(); },
     onError: () => toast.error('Failed to create service'),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateServiceRequest }) =>
-      servicesApi.update(id, data),
-    onSuccess: () => {
-      toast.success('Service updated');
-      queryClient.invalidateQueries({ queryKey: ['services'] });
-      closeModal();
-    },
+    mutationFn: ({ id, data }: { id: string; data: UpdateServiceRequest }) => servicesApi.update(id, data),
+    onSuccess: () => { toast.success('Service updated'); queryClient.invalidateQueries({ queryKey: ['services'] }); closeModal(); },
     onError: () => toast.error('Failed to update service'),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => servicesApi.delete(id),
-    onSuccess: () => {
-      toast.success('Service deleted');
-      queryClient.invalidateQueries({ queryKey: ['services'] });
-      setDeleteTarget(null);
-    },
+    onSuccess: () => { toast.success('Service deleted'); queryClient.invalidateQueries({ queryKey: ['services'] }); setDeleteTarget(null); },
     onError: () => toast.error('Failed to delete service'),
   });
 
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setEditingService(null);
-    setForm(emptyForm);
-  };
+  const closeModal = () => { setIsModalOpen(false); setEditingService(null); setForm(emptyForm); };
 
-  const openCreate = () => {
-    setForm(emptyForm);
-    setEditingService(null);
-    setIsModalOpen(true);
-  };
+  const openCreate = () => { setForm(emptyForm); setEditingService(null); setIsModalOpen(true); };
 
   const openEdit = (service: Service) => {
     setEditingService(service);
-    setForm({
-      name: service.name || '',
-      description: service.description || '',
-      category: service.category || '',
-      basePrice: service.basePrice,
-      duration: service.duration,
-      status: service.status || 'active',
-    });
+    setForm({ name: service.name || '', description: service.description || '', category: service.category || '', basePrice: service.basePrice, duration: service.duration, status: service.status || 'active' });
     setIsModalOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) {
-      toast.error('Name is required');
-      return;
-    }
+    if (!form.name.trim()) { toast.error('Name is required'); return; }
     if (editingService) {
       const id = normalizeId(editingService as unknown as Record<string, unknown>);
       updateMutation.mutate({ id, data: form });
@@ -111,199 +105,138 @@ export function ServicesPage() {
         title="Services"
         subtitle="Manage available services"
         actions={
-          <button
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors cursor-pointer"
-            onClick={openCreate}
-          >
+          <Button onClick={openCreate}>
             <Plus size={18} />
             <span className="max-sm:hidden">Add Service</span>
-          </button>
+          </Button>
         }
       />
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <Card className="overflow-hidden">
         {isLoading ? (
-          <TableSkeleton rows={5} cols={5} />
+          <TableSkeletonLoader />
         ) : error ? (
-          <div className="p-8 text-center">
-            <p className="text-red-500">Failed to load services</p>
-          </div>
+          <div className="p-8 text-center"><p className="text-red-500">Failed to load services</p></div>
         ) : services.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-gray-400 text-lg">No services yet</p>
             <p className="text-gray-300 text-sm mt-1">Create your first service to get started</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b-2 border-gray-100">
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Price</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Duration</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {services.map((service) => {
-                  const id = normalizeId(service as unknown as Record<string, unknown>);
-                  return (
-                    <tr key={id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{service.name}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{service.category || '—'}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {service.basePrice != null ? `$${service.basePrice}` : '—'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {service.duration ? `${service.duration} min` : '—'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            service.status === 'active'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-600'
-                          }`}
-                        >
-                          {service.status || '—'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            className="p-2 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-500 transition-colors cursor-pointer"
-                            onClick={() => openEdit(service)}
-                            title="Edit"
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            className="p-2 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors cursor-pointer"
-                            onClick={() => setDeleteTarget(service)}
-                            title="Delete"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {services.map((service) => {
+                const id = normalizeId(service as unknown as Record<string, unknown>);
+                return (
+                  <TableRow key={id}>
+                    <TableCell className="font-medium">{service.name}</TableCell>
+                    <TableCell className="text-gray-600">{service.category || '—'}</TableCell>
+                    <TableCell className="text-gray-600">{service.basePrice != null ? `$${service.basePrice}` : '—'}</TableCell>
+                    <TableCell className="text-gray-600">{service.duration ? `${service.duration} min` : '—'}</TableCell>
+                    <TableCell>
+                      <Badge variant={service.status === 'active' ? 'success' : 'secondary'}>
+                        {service.status || '—'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(service)}><Pencil size={16} /></Button>
+                        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => setDeleteTarget(service)}><Trash2 size={16} /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
-      </div>
+      </Card>
 
-      {/* Create/Edit Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={closeModal}
-        title={editingService ? 'Edit Service' : 'Create Service'}
-        maxWidth="550px"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Name *</label>
-            <input
-              type="text"
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Service name"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
-            <textarea
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none"
-              rows={3}
-              value={form.description || ''}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Service description"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
-              <input
-                type="text"
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                value={form.category || ''}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-                placeholder="e.g. cleaning"
-              />
+      {/* Create/Edit Dialog */}
+      <Dialog open={isModalOpen} onOpenChange={() => closeModal()}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>{editingService ? 'Edit Service' : 'Create Service'}</DialogTitle>
+            <DialogDescription>{editingService ? 'Update the service details' : 'Fill in the details for the new service'}</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Name *</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Service name" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
-              <select
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                value={form.status || 'active'}
-                onChange={(e) => setForm({ ...form, status: e.target.value })}
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Service description" rows={3} />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Base Price ($)</label>
-              <input
-                type="number"
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                value={form.basePrice ?? ''}
-                onChange={(e) => setForm({ ...form, basePrice: e.target.value ? Number(e.target.value) : undefined })}
-                placeholder="50"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Input value={form.category || ''} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g. cleaning" />
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={form.status || 'active'} onValueChange={(val) => setForm({ ...form, status: val })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Duration (min)</label>
-              <input
-                type="number"
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                value={form.duration ?? ''}
-                onChange={(e) => setForm({ ...form, duration: e.target.value ? Number(e.target.value) : undefined })}
-                placeholder="120"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Base Price ($)</Label>
+                <Input type="number" value={form.basePrice ?? ''} onChange={(e) => setForm({ ...form, basePrice: e.target.value ? Number(e.target.value) : undefined })} placeholder="50" />
+              </div>
+              <div className="space-y-2">
+                <Label>Duration (min)</Label>
+                <Input type="number" value={form.duration ?? ''} onChange={(e) => setForm({ ...form, duration: e.target.value ? Number(e.target.value) : undefined })} placeholder="120" />
+              </div>
             </div>
-          </div>
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              className="flex-1 py-2.5 rounded-lg bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 transition-colors cursor-pointer"
-              onClick={closeModal}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex-1 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-60 cursor-pointer"
-              disabled={isSaving}
-            >
-              {isSaving ? 'Saving...' : editingService ? 'Update' : 'Create'}
-            </button>
-          </div>
-        </form>
-      </Modal>
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
+              <Button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : editingService ? 'Update' : 'Create'}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation */}
-      <ConfirmDialog
-        isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={() => {
-          if (deleteTarget) {
-            const id = normalizeId(deleteTarget as unknown as Record<string, unknown>);
-            deleteMutation.mutate(id);
-          }
-        }}
-        title="Delete Service"
-        message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
-        confirmText="Delete"
-        isLoading={deleteMutation.isPending}
-      />
+      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Service</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{deleteTarget?.name}&quot;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteTarget) {
+                  const id = normalizeId(deleteTarget as unknown as Record<string, unknown>);
+                  deleteMutation.mutate(id);
+                }
+              }}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

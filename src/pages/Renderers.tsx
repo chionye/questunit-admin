@@ -5,19 +5,42 @@ import { Check, X, Eye } from 'lucide-react';
 import { renderersApi } from '@/api/endpoints';
 import { extractData, normalizeId } from '@/hooks/useApiData';
 import { Header } from '@/components/layout/Header';
-import { Modal } from '@/components/common/Modal';
-import { TableSkeleton } from '@/components/common/Skeleton';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import type { Renderer, ApproveRendererRequest, RejectRendererRequest } from '@/types';
+
+function TableSkeletonLoader() {
+  return (
+    <div className="p-4 space-y-4">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex gap-4">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-5 w-28" />
+          <Skeleton className="h-5 w-20" />
+          <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-5 w-20 ml-auto" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function RenderersPage() {
   const queryClient = useQueryClient();
   const [selectedRenderer, setSelectedRenderer] = useState<Renderer | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'reject' | 'view' | null>(null);
 
-  // Approve form state
   const [notes, setNotes] = useState('');
   const [hourlyRate, setHourlyRate] = useState('');
-  // Reject form state
   const [rejectReason, setRejectReason] = useState('');
   const [rejectNotes, setRejectNotes] = useState('');
 
@@ -79,10 +102,7 @@ export function RenderersPage() {
     const userId = normalizeId(selectedRenderer as unknown as Record<string, unknown>);
     rejectMutation.mutate({
       userId,
-      data: {
-        reason: rejectReason,
-        notes: rejectNotes || undefined,
-      },
+      data: { reason: rejectReason, notes: rejectNotes || undefined },
     });
   };
 
@@ -90,9 +110,9 @@ export function RenderersPage() {
     <div>
       <Header title="Pending Renderers" subtitle="Review and approve renderer applications" />
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <Card className="overflow-hidden">
         {isLoading ? (
-          <TableSkeleton rows={6} cols={5} />
+          <TableSkeletonLoader />
         ) : error ? (
           <div className="p-8 text-center">
             <p className="text-red-500">Failed to load pending renderers</p>
@@ -103,205 +123,141 @@ export function RenderersPage() {
             <p className="text-gray-300 text-sm mt-1">All applications have been reviewed</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b-2 border-gray-100">
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Phone</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Applied</th>
-                  <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {renderers.map((renderer) => {
-                  const id = normalizeId(renderer as unknown as Record<string, unknown>);
-                  const name = renderer.name || renderer.user?.name || '—';
-                  const email = renderer.email || renderer.user?.email || '—';
-                  const phone = renderer.phone || renderer.user?.phone || '—';
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Applied</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {renderers.map((renderer) => {
+                const id = normalizeId(renderer as unknown as Record<string, unknown>);
+                const name = renderer.name || renderer.user?.name || '—';
+                const email = renderer.email || renderer.user?.email || '—';
+                const phone = renderer.phone || renderer.user?.phone || '—';
 
-                  return (
-                    <tr key={id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{name}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{email}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{phone}</td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                          {renderer.status || 'pending'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-400">
-                        {renderer.createdAt ? new Date(renderer.createdAt).toLocaleDateString() : '—'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors cursor-pointer"
-                            title="View Details"
-                            onClick={() => { setSelectedRenderer(renderer); setActionType('view'); }}
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <button
-                            className="p-2 rounded-lg text-green-500 hover:bg-green-50 transition-colors cursor-pointer"
-                            title="Approve"
-                            onClick={() => { setSelectedRenderer(renderer); setActionType('approve'); }}
-                          >
-                            <Check size={16} />
-                          </button>
-                          <button
-                            className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
-                            title="Reject"
-                            onClick={() => { setSelectedRenderer(renderer); setActionType('reject'); }}
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                return (
+                  <TableRow key={id}>
+                    <TableCell className="font-medium">{name}</TableCell>
+                    <TableCell className="text-gray-600">{email}</TableCell>
+                    <TableCell className="text-gray-600">{phone}</TableCell>
+                    <TableCell>
+                      <Badge variant="warning">{renderer.status || 'pending'}</Badge>
+                    </TableCell>
+                    <TableCell className="text-gray-400">
+                      {renderer.createdAt ? new Date(renderer.createdAt).toLocaleDateString() : '—'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => { setSelectedRenderer(renderer); setActionType('view'); }}>
+                          <Eye size={16} />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-green-500 hover:text-green-600 hover:bg-green-50" onClick={() => { setSelectedRenderer(renderer); setActionType('approve'); }}>
+                          <Check size={16} />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => { setSelectedRenderer(renderer); setActionType('reject'); }}>
+                          <X size={16} />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
-      </div>
+      </Card>
 
-      {/* View Modal */}
-      <Modal
-        isOpen={actionType === 'view' && !!selectedRenderer}
-        onClose={closeModal}
-        title="Renderer Details"
-        maxWidth="550px"
-      >
-        {selectedRenderer && (
-          <div className="space-y-4">
-            <DetailRow label="Name" value={selectedRenderer.name || selectedRenderer.user?.name} />
-            <DetailRow label="Email" value={selectedRenderer.email || selectedRenderer.user?.email} />
-            <DetailRow label="Phone" value={selectedRenderer.phone || selectedRenderer.user?.phone} />
-            <DetailRow label="Status" value={selectedRenderer.status} />
-            <DetailRow label="Experience" value={selectedRenderer.experience} />
-            {selectedRenderer.skills && (
-              <div>
-                <span className="text-sm font-medium text-gray-500">Skills</span>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {selectedRenderer.skills.map((skill, i) => (
-                    <span key={i} className="px-2.5 py-1 bg-primary-light text-primary text-xs font-medium rounded-full">
-                      {skill}
-                    </span>
-                  ))}
+      {/* View Dialog */}
+      <Dialog open={actionType === 'view' && !!selectedRenderer} onOpenChange={() => closeModal()}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>Renderer Details</DialogTitle>
+            <DialogDescription>Review the renderer's application details</DialogDescription>
+          </DialogHeader>
+          {selectedRenderer && (
+            <div className="space-y-3">
+              <DetailRow label="Name" value={selectedRenderer.name || selectedRenderer.user?.name} />
+              <DetailRow label="Email" value={selectedRenderer.email || selectedRenderer.user?.email} />
+              <DetailRow label="Phone" value={selectedRenderer.phone || selectedRenderer.user?.phone} />
+              <DetailRow label="Status" value={selectedRenderer.status} />
+              <DetailRow label="Experience" value={selectedRenderer.experience} />
+              {selectedRenderer.skills && (
+                <div>
+                  <span className="text-sm font-medium text-gray-500">Skills</span>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {selectedRenderer.skills.map((skill, i) => (
+                      <Badge key={i} variant="default">{skill}</Badge>
+                    ))}
+                  </div>
                 </div>
+              )}
+              <Separator className="my-4" />
+              <div className="flex gap-3">
+                <Button className="flex-1" onClick={() => setActionType('approve')}>Approve</Button>
+                <Button variant="destructive" className="flex-1" onClick={() => setActionType('reject')}>Reject</Button>
               </div>
-            )}
-            <div className="flex gap-3 pt-4">
-              <button
-                className="flex-1 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors cursor-pointer"
-                onClick={() => setActionType('approve')}
-              >
-                Approve
-              </button>
-              <button
-                className="flex-1 py-2.5 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors cursor-pointer"
-                onClick={() => setActionType('reject')}
-              >
-                Reject
-              </button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Approve Dialog */}
+      <Dialog open={actionType === 'approve' && !!selectedRenderer} onOpenChange={() => closeModal()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve Renderer</DialogTitle>
+            <DialogDescription>Set rate and add approval notes</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Hourly Rate ($)</Label>
+              <Input type="number" placeholder="30.00" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea placeholder="Approval notes..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
             </div>
           </div>
-        )}
-      </Modal>
-
-      {/* Approve Modal */}
-      <Modal
-        isOpen={actionType === 'approve' && !!selectedRenderer}
-        onClose={closeModal}
-        title="Approve Renderer"
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Hourly Rate ($)</label>
-            <input
-              type="number"
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-              placeholder="30.00"
-              value={hourlyRate}
-              onChange={(e) => setHourlyRate(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
-            <textarea
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none"
-              rows={3}
-              placeholder="Approval notes..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
-          <div className="flex gap-3 pt-2">
-            <button
-              className="flex-1 py-2.5 rounded-lg bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 transition-colors cursor-pointer"
-              onClick={closeModal}
-            >
-              Cancel
-            </button>
-            <button
-              className="flex-1 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-60 cursor-pointer"
-              onClick={handleApprove}
-              disabled={approveMutation.isPending}
-            >
+          <DialogFooter>
+            <Button variant="secondary" onClick={closeModal}>Cancel</Button>
+            <Button onClick={handleApprove} disabled={approveMutation.isPending}>
               {approveMutation.isPending ? 'Approving...' : 'Approve'}
-            </button>
-          </div>
-        </div>
-      </Modal>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Reject Modal */}
-      <Modal
-        isOpen={actionType === 'reject' && !!selectedRenderer}
-        onClose={closeModal}
-        title="Reject Renderer"
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Reason *</label>
-            <input
-              type="text"
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 transition-all"
-              placeholder="Reason for rejection"
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-            />
+      {/* Reject Dialog */}
+      <Dialog open={actionType === 'reject' && !!selectedRenderer} onOpenChange={() => closeModal()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Renderer</DialogTitle>
+            <DialogDescription>Provide a reason for rejection</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Reason *</Label>
+              <Input placeholder="Reason for rejection" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea placeholder="Additional notes..." value={rejectNotes} onChange={(e) => setRejectNotes(e.target.value)} rows={3} />
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
-            <textarea
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 transition-all resize-none"
-              rows={3}
-              placeholder="Additional notes..."
-              value={rejectNotes}
-              onChange={(e) => setRejectNotes(e.target.value)}
-            />
-          </div>
-          <div className="flex gap-3 pt-2">
-            <button
-              className="flex-1 py-2.5 rounded-lg bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 transition-colors cursor-pointer"
-              onClick={closeModal}
-            >
-              Cancel
-            </button>
-            <button
-              className="flex-1 py-2.5 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-60 cursor-pointer"
-              onClick={handleReject}
-              disabled={rejectMutation.isPending}
-            >
+          <DialogFooter>
+            <Button variant="secondary" onClick={closeModal}>Cancel</Button>
+            <Button variant="destructive" onClick={handleReject} disabled={rejectMutation.isPending}>
               {rejectMutation.isPending ? 'Rejecting...' : 'Reject'}
-            </button>
-          </div>
-        </div>
-      </Modal>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
