@@ -26,13 +26,9 @@ export function LoginPage() {
   const loginMutation = useMutation({
     mutationFn: () => authApi.login({ email, password }),
     onSuccess: (response) => {
+      console.log(response.data);
       const data = response.data;
-      const token =
-        data?.token ||
-        data?.accessToken ||
-        data?.data?.token ||
-        data?.data?.accessToken ||
-        "";
+      const token = data?.token;
       const user = data?.user || data?.data?.user || null;
 
       if (!token) {
@@ -47,7 +43,6 @@ export function LoginPage() {
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err?.response?.data?.message || "Login failed");
-      navigate("/", { replace: true });
     },
   });
 

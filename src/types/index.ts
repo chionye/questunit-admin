@@ -25,24 +25,42 @@ export interface User {
 }
 
 // Dashboard types
-export interface DashboardOverview {
-  totalUsers?: number;
-  totalRenderers?: number;
-  pendingRenderers?: number;
-  totalServices?: number;
-  totalBookings?: number;
-  totalRevenue?: number;
-  recentActivity?: Activity[];
-  stats?: Record<string, number>;
-  [key: string]: unknown;
+export interface DashboardCounts {
+  totalUsers: number;
+  totalRequesters: number;
+  totalRenderers: number;
+  pendingRenderers: number;
+  activeServices: number;
+  activeTools: number;
 }
 
-export interface Activity {
-  id: string;
-  type: string;
-  message: string;
+export interface RecentUser {
+  id: number;
+  email: string;
+  phone: string | null;
+  role: string;
+  status: string;
   createdAt: string;
-  [key: string]: unknown;
+  UserProfile: {
+    firstName: string;
+    lastName: string;
+  } | null;
+}
+
+export interface RecentService {
+  id: number;
+  name: string;
+  category: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface DashboardOverview {
+  counts: DashboardCounts;
+  recentActivities: {
+    users: RecentUser[];
+    services: RecentService[];
+  };
 }
 
 // Renderer types

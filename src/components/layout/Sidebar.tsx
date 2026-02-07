@@ -1,26 +1,11 @@
 /** @format */
 
 import { NavLink, useLocation } from "react-router-dom";
-import {
-  LayoutDashboard,
-  Users,
-  Wrench,
-  Box,
-  Grid3X3,
-  LogOut,
-  X,
-} from "lucide-react";
+import { LogOut, X } from "lucide-react";
 import { useSidebarStore } from "@/stores/sidebarStore";
 import { useAuthStore } from "@/stores/authStore";
 import { cn } from "@/lib/utils";
-
-const navItems = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/renderers", label: "Pending Renderers", icon: Users },
-  { path: "/services", label: "Services", icon: Box },
-  { path: "/service-types", label: "Service Types", icon: Grid3X3 },
-  { path: "/tools", label: "Tools", icon: Wrench },
-];
+import { navItems } from "@/constants";
 
 export function Sidebar() {
   const { isOpen, close } = useSidebarStore();
