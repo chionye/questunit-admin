@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, X } from 'lucide-react';
 import { servicesApi } from '@/api/endpoints';
 import { extractData, normalizeId } from '@/hooks/useApiData';
 import { Header } from '@/components/layout/Header';
@@ -16,15 +16,15 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import type { Service, CreateServiceRequest, UpdateServiceRequest } from '@/types';
+import type { Service, CreateServiceRequest } from '@/types';
 
 const emptyForm: CreateServiceRequest = {
   name: '',
   description: '',
   category: '',
   basePrice: undefined,
-  duration: undefined,
-  status: 'active',
+  estimatedDuration: undefined,
+  isActive: true,
 };
 
 function TableSkeletonLoader() {
@@ -50,6 +50,8 @@ export function ServicesPage() {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
   const [form, setForm] = useState<CreateServiceRequest>(emptyForm);
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
 
   const { data: response, isLoading, error } = useQuery({
     queryKey: ['services'],
@@ -58,14 +60,26 @@ export function ServicesPage() {
 
   const services: Service[] = response ? (extractData(response) as Service[] ?? []) : [];
 
+  const buildFormData = (fields: CreateServiceRequest, file: File | null): FormData => {
+    const fd = new FormData();
+    fd.append('name', fields.name);
+    if (fields.description) fd.append('description', fields.description);
+    if (fields.category) fd.append('category', fields.category);
+    if (fields.basePrice != null) fd.append('basePrice', String(fields.basePrice));
+    if (fields.estimatedDuration != null) fd.append('estimatedDuration', String(fields.estimatedDuration));
+    fd.append('isActive', String(fields.isActive ?? true));
+    if (file) fd.append('icon', file);
+    return fd;
+  };
+
   const createMutation = useMutation({
-    mutationFn: (data: CreateServiceRequest) => servicesApi.create(data),
+    mutationFn: (data: FormData) => servicesApi.create(data),
     onSuccess: () => { toast.success('Service created'); queryClient.invalidateQueries({ queryKey: ['services'] }); closeModal(); },
     onError: () => toast.error('Failed to create service'),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateServiceRequest }) => servicesApi.update(id, data),
+    mutationFn: ({ id, data }: { id: string; data: FormData }) => servicesApi.update(id, data),
     onSuccess: () => { toast.success('Service updated'); queryClient.invalidateQueries({ queryKey: ['services'] }); closeModal(); },
     onError: () => toast.error('Failed to update service'),
   });
@@ -76,24 +90,37 @@ export function ServicesPage() {
     onError: () => toast.error('Failed to delete service'),
   });
 
-  const closeModal = () => { setIsModalOpen(false); setEditingService(null); setForm(emptyForm); };
+  const closeModal = () => { setIsModalOpen(false); setEditingService(null); setForm(emptyForm); setIconFile(null); setIconPreview(null); };
 
   const openCreate = () => { setForm(emptyForm); setEditingService(null); setIsModalOpen(true); };
 
   const openEdit = (service: Service) => {
     setEditingService(service);
-    setForm({ name: service.name || '', description: service.description || '', category: service.category || '', basePrice: service.basePrice, duration: service.duration, status: service.status || 'active' });
+    setForm({ name: service.name || '', description: service.description || '', category: service.category || '', basePrice: service.basePrice ? Number(service.basePrice) : undefined, estimatedDuration: service.estimatedDuration ?? undefined, isActive: service.isActive ?? true });
     setIsModalOpen(true);
+  };
+
+  const handleIconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== 'image/svg+xml') {
+      toast.error('Only SVG files are allowed');
+      e.target.value = '';
+      return;
+    }
+    setIconFile(file);
+    setIconPreview(URL.createObjectURL(file));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) { toast.error('Name is required'); return; }
+    const fd = buildFormData(form, iconFile);
     if (editingService) {
       const id = normalizeId(editingService as unknown as Record<string, unknown>);
-      updateMutation.mutate({ id, data: form });
+      updateMutation.mutate({ id, data: fd });
     } else {
-      createMutation.mutate(form);
+      createMutation.mutate(fd);
     }
   };
 
@@ -126,6 +153,7 @@ export function ServicesPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">Icon</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Price</TableHead>
@@ -139,13 +167,20 @@ export function ServicesPage() {
                 const id = normalizeId(service as unknown as Record<string, unknown>);
                 return (
                   <TableRow key={id}>
+                    <TableCell>
+                      {service.iconUrl ? (
+                        <img src={service.iconUrl} alt={service.name} className="h-8 w-8 object-contain" />
+                      ) : (
+                        <div className="h-8 w-8 rounded bg-gray-100" />
+                      )}
+                    </TableCell>
                     <TableCell className="font-medium">{service.name}</TableCell>
                     <TableCell className="text-gray-600">{service.category || '—'}</TableCell>
-                    <TableCell className="text-gray-600">{service.basePrice != null ? `$${service.basePrice}` : '—'}</TableCell>
-                    <TableCell className="text-gray-600">{service.duration ? `${service.duration} min` : '—'}</TableCell>
+                    <TableCell className="text-gray-600">{service.basePrice != null ? `${service.currency || '$'}${service.basePrice}` : '—'}</TableCell>
+                    <TableCell className="text-gray-600">{service.estimatedDuration ? `${service.estimatedDuration} min` : '—'}</TableCell>
                     <TableCell>
-                      <Badge variant={service.status === 'active' ? 'success' : 'secondary'}>
-                        {service.status || '—'}
+                      <Badge variant={service.isActive ? 'success' : 'secondary'}>
+                        {service.isActive ? 'Active' : 'Inactive'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -185,7 +220,7 @@ export function ServicesPage() {
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Select value={form.status || 'active'} onValueChange={(val) => setForm({ ...form, status: val })}>
+                <Select value={form.isActive === false ? 'inactive' : 'active'} onValueChange={(val) => setForm({ ...form, isActive: val === 'active' })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
@@ -201,7 +236,29 @@ export function ServicesPage() {
               </div>
               <div className="space-y-2">
                 <Label>Duration (min)</Label>
-                <Input type="number" value={form.duration ?? ''} onChange={(e) => setForm({ ...form, duration: e.target.value ? Number(e.target.value) : undefined })} placeholder="120" />
+                <Input type="number" value={form.estimatedDuration ?? ''} onChange={(e) => setForm({ ...form, estimatedDuration: e.target.value ? Number(e.target.value) : undefined })} placeholder="120" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Icon (SVG only)</Label>
+              <div className="flex items-center gap-3">
+                {iconPreview || (editingService?.iconUrl) ? (
+                  <div className="relative h-10 w-10 shrink-0 rounded border flex items-center justify-center bg-gray-50">
+                    <img src={iconPreview || editingService?.iconUrl || ''} alt="icon" className="h-8 w-8 object-contain" />
+                    <button
+                      type="button"
+                      className="absolute -top-1.5 -right-1.5 rounded-full bg-red-500 text-white p-0.5"
+                      onClick={() => { setIconFile(null); setIconPreview(null); }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ) : null}
+                <label className="flex items-center gap-2 cursor-pointer rounded-md border border-dashed border-gray-300 px-3 py-2 text-sm text-gray-600 hover:border-gray-400 transition-colors">
+                  <Upload size={16} />
+                  {iconFile ? iconFile.name : 'Choose SVG file'}
+                  <input type="file" accept=".svg,image/svg+xml" className="hidden" onChange={handleIconChange} />
+                </label>
               </div>
             </div>
             <DialogFooter>

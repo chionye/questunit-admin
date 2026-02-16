@@ -1,3 +1,5 @@
+/** @format */
+
 // Auth types
 export interface LoginRequest {
   email: string;
@@ -98,17 +100,22 @@ export interface RejectRendererRequest {
 
 // Service types
 export interface Service {
-  id: string;
+  id: number;
   _id?: string;
   name: string;
   description?: string;
+  iconUrl?: string | null;
   category?: string;
-  basePrice?: number;
-  duration?: number;
-  requirements?: Record<string, unknown>;
-  status?: string;
+  basePrice?: string;
+  currency?: string;
+  estimatedDuration?: number | null;
+  requirements?: Record<string, unknown> | null;
+  safetyGuidelines?: string | null;
+  isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  deletedAt?: string | null;
+  ServiceTypes?: ServiceType[];
   [key: string]: unknown;
 }
 
@@ -117,9 +124,8 @@ export interface CreateServiceRequest {
   description?: string;
   category?: string;
   basePrice?: number;
-  duration?: number;
-  requirements?: Record<string, unknown>;
-  status?: string;
+  estimatedDuration?: number;
+  isActive?: boolean;
 }
 
 export interface UpdateServiceRequest {
@@ -127,9 +133,8 @@ export interface UpdateServiceRequest {
   description?: string;
   category?: string;
   basePrice?: number;
-  duration?: number;
-  requirements?: Record<string, unknown>;
-  status?: string;
+  estimatedDuration?: number;
+  isActive?: boolean;
 }
 
 // Service Type types
@@ -139,8 +144,9 @@ export interface ServiceType {
   serviceId?: string;
   name: string;
   description?: string;
-  price?: number;
-  duration?: number;
+  iconUrl?: string | null;
+  basePrice?: number;
+  estimatedDuration?: number;
   createdAt?: string;
   updatedAt?: string;
   [key: string]: unknown;
@@ -150,15 +156,15 @@ export interface CreateServiceTypeRequest {
   serviceId: string;
   name: string;
   description?: string;
-  price?: number;
-  duration?: number;
+  basePrice?: number;
+  estimatedDuration?: number;
 }
 
 export interface UpdateServiceTypeRequest {
   name?: string;
   description?: string;
-  price?: number;
-  duration?: number;
+  basePrice?: number;
+  estimatedDuration?: number;
 }
 
 // Tool types

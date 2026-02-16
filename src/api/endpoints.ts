@@ -7,11 +7,7 @@ import type {
   ApproveRendererRequest,
   RejectRendererRequest,
   Service,
-  CreateServiceRequest,
-  UpdateServiceRequest,
   ServiceType,
-  CreateServiceTypeRequest,
-  UpdateServiceTypeRequest,
   Tool,
   CreateToolRequest,
   UpdateToolRequest,
@@ -44,10 +40,14 @@ export const renderersApi = {
 export const servicesApi = {
   getAll: () =>
     api.get<ApiResponse<Service[]>>('/admin/services'),
-  create: (data: CreateServiceRequest) =>
-    api.post<ApiResponse<Service>>('/admin/services', data),
-  update: (serviceId: string, data: UpdateServiceRequest) =>
-    api.put<ApiResponse<Service>>(`/admin/services/${serviceId}`, data),
+  create: (data: FormData) =>
+    api.post<ApiResponse<Service>>('/admin/services', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  update: (serviceId: string, data: FormData) =>
+    api.put<ApiResponse<Service>>(`/admin/services/${serviceId}`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
   delete: (serviceId: string) =>
     api.delete<ApiResponse<void>>(`/admin/services/${serviceId}`),
 };
@@ -55,11 +55,15 @@ export const servicesApi = {
 // Service Types
 export const serviceTypesApi = {
   getAll: () =>
-    api.get<ApiResponse<ServiceType[]>>('/admin/service-types'),
-  create: (data: CreateServiceTypeRequest) =>
-    api.post<ApiResponse<ServiceType>>('/admin/service-types', data),
-  update: (typeId: string, data: UpdateServiceTypeRequest) =>
-    api.put<ApiResponse<ServiceType>>(`/admin/service-types/${typeId}`, data),
+    api.get<ApiResponse<ServiceType[]>>('/service-types'),
+  create: (data: FormData) =>
+    api.post<ApiResponse<ServiceType>>('/admin/service-types', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  update: (typeId: string, data: FormData) =>
+    api.put<ApiResponse<ServiceType>>(`/admin/service-types/${typeId}`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
   delete: (typeId: string) =>
     api.delete<ApiResponse<void>>(`/admin/service-types/${typeId}`),
 };
