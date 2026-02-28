@@ -11,6 +11,15 @@ import type {
   Tool,
   CreateToolRequest,
   UpdateToolRequest,
+  Program,
+  CreateProgramRequest,
+  UpdateProgramRequest,
+  ProgramStage,
+  CreateStageRequest,
+  UpdateStageRequest,
+  ProgramVideo,
+  CreateVideoRequest,
+  UpdateVideoRequest,
   ApiResponse,
 } from '../types';
 
@@ -78,4 +87,40 @@ export const toolsApi = {
     api.put<ApiResponse<Tool>>(`/admin/tools/${toolId}`, data),
   delete: (toolId: string) =>
     api.delete<ApiResponse<void>>(`/admin/tools/${toolId}`),
+};
+
+// Programs
+export const programsApi = {
+  getAll: () =>
+    api.get<ApiResponse<Program[]>>('/admin/programs'),
+  create: (data: CreateProgramRequest) =>
+    api.post<ApiResponse<Program>>('/admin/programs', data),
+  update: (id: number, data: UpdateProgramRequest) =>
+    api.put<ApiResponse<Program>>(`/admin/programs/${id}`, data),
+  delete: (id: number) =>
+    api.delete<ApiResponse<void>>(`/admin/programs/${id}`),
+};
+
+// Stages
+export const stagesApi = {
+  getByProgram: (programId: number) =>
+    api.get<ApiResponse<ProgramStage[]>>(`/admin/programs/${programId}/stages`),
+  create: (data: CreateStageRequest) =>
+    api.post<ApiResponse<ProgramStage>>('/admin/stages', data),
+  update: (id: number, data: UpdateStageRequest) =>
+    api.put<ApiResponse<ProgramStage>>(`/admin/stages/${id}`, data),
+  delete: (id: number) =>
+    api.delete<ApiResponse<void>>(`/admin/stages/${id}`),
+};
+
+// Videos
+export const videosApi = {
+  getByStage: (stageId: number) =>
+    api.get<ApiResponse<ProgramVideo[]>>(`/admin/stages/${stageId}/videos`),
+  create: (data: CreateVideoRequest) =>
+    api.post<ApiResponse<ProgramVideo>>('/admin/videos', data),
+  update: (id: number, data: UpdateVideoRequest) =>
+    api.put<ApiResponse<ProgramVideo>>(`/admin/videos/${id}`, data),
+  delete: (id: number) =>
+    api.delete<ApiResponse<void>>(`/admin/videos/${id}`),
 };

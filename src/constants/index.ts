@@ -8,14 +8,18 @@ import {
   Wrench,
   TrendingUp,
   Clock,
+  BookOpen,
+  CircleDollarSign,
 } from "lucide-react";
 
 export const navItems = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
   { path: "/renderers", label: "Pending Renderers", icon: Users },
   { path: "/services", label: "Services", icon: Box },
-  { path: "/service-types", label: "Service Types", icon: Grid3X3 },
+  { path: "/service-types", label: "Service Types & Pricing", icon: Grid3X3 },
+  { path: "/service-commissions", label: "Commissions", icon: CircleDollarSign },
   { path: "/tools", label: "Tools", icon: Wrench },
+  { path: "/programs", label: "Programs", icon: BookOpen },
 ] as const;
 
 export const statCards = [

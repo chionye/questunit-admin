@@ -112,6 +112,7 @@ export interface Service {
   requirements?: Record<string, unknown> | null;
   safetyGuidelines?: string | null;
   isActive?: boolean;
+  commissionPercentage?: number | null;
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;
@@ -126,6 +127,7 @@ export interface CreateServiceRequest {
   basePrice?: number;
   estimatedDuration?: number;
   isActive?: boolean;
+  commissionPercentage?: number;
 }
 
 export interface UpdateServiceRequest {
@@ -135,6 +137,7 @@ export interface UpdateServiceRequest {
   basePrice?: number;
   estimatedDuration?: number;
   isActive?: boolean;
+  commissionPercentage?: number;
 }
 
 // Service Type types
@@ -147,6 +150,12 @@ export interface ServiceType {
   iconUrl?: string | null;
   basePrice?: number;
   estimatedDuration?: number;
+  requestFee?: number | null;
+  waitTime?: number | null;
+  perKmMorning?: number | null;
+  perKmNight?: number | null;
+  cancellationFee?: number | null;
+  serviceCharge?: number | null;
   createdAt?: string;
   updatedAt?: string;
   [key: string]: unknown;
@@ -158,6 +167,12 @@ export interface CreateServiceTypeRequest {
   description?: string;
   basePrice?: number;
   estimatedDuration?: number;
+  requestFee?: number;
+  waitTime?: number;
+  perKmMorning?: number;
+  perKmNight?: number;
+  cancellationFee?: number;
+  serviceCharge?: number;
 }
 
 export interface UpdateServiceTypeRequest {
@@ -165,6 +180,12 @@ export interface UpdateServiceTypeRequest {
   description?: string;
   basePrice?: number;
   estimatedDuration?: number;
+  requestFee?: number;
+  waitTime?: number;
+  perKmMorning?: number;
+  perKmNight?: number;
+  cancellationFee?: number;
+  serviceCharge?: number;
 }
 
 // Tool types
@@ -199,6 +220,49 @@ export interface UpdateToolRequest {
   requirements?: Record<string, unknown>;
   status?: string;
 }
+
+// Program types
+export interface Program {
+  id: number;
+  title: string;
+  description?: string;
+  isActive?: boolean;
+  order?: number;
+  stages?: ProgramStage[];
+  createdAt?: string;
+}
+export interface CreateProgramRequest { title: string; description?: string; isActive?: boolean; order?: number; }
+export interface UpdateProgramRequest { title?: string; description?: string; isActive?: boolean; order?: number; }
+
+export interface ProgramStage {
+  id: number;
+  programId: number;
+  title: string;
+  shortTitle?: string;
+  order?: number;
+  isActive?: boolean;
+  videos?: ProgramVideo[];
+  createdAt?: string;
+}
+export interface CreateStageRequest { programId: number; title: string; shortTitle?: string; order?: number; }
+export interface UpdateStageRequest { title?: string; shortTitle?: string; order?: number; isActive?: boolean; }
+
+export interface ProgramVideo {
+  id: number;
+  stageId: number;
+  title: string;
+  youtubeUrl: string;
+  category?: string;
+  level?: string;
+  difficulty?: string;
+  equipment?: string;
+  duration?: string;
+  order?: number;
+  isActive?: boolean;
+  createdAt?: string;
+}
+export interface CreateVideoRequest { stageId: number; title: string; youtubeUrl: string; category?: string; level?: string; difficulty?: string; equipment?: string; duration?: string; order?: number; }
+export interface UpdateVideoRequest { title?: string; youtubeUrl?: string; category?: string; level?: string; difficulty?: string; equipment?: string; duration?: string; order?: number; isActive?: boolean; }
 
 // Generic API response wrapper
 export interface ApiResponse<T> {
