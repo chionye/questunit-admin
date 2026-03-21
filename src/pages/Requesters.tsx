@@ -38,11 +38,11 @@ function TableSkeletonLoader() {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const variants: Record<string, 'default' | 'success' | 'warning' | 'destructive'> = {
+  const variants: Record<string, 'default' | 'success' | 'warning' | 'danger'> = {
     active: 'success',
     pending: 'warning',
-    suspended: 'destructive',
-    rejected: 'destructive',
+    suspended: 'danger',
+    rejected: 'danger',
   };
   return <Badge variant={variants[status] ?? 'default'}>{status}</Badge>;
 }
