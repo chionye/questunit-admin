@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Plus, Pencil, Trash2, ChevronRight } from 'lucide-react';
-import { programsApi } from '@/api/endpoints';
+import { programsApi, serviceTypesApi } from '@/api/endpoints';
 import { extractData } from '@/hooks/useApiData';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
@@ -22,9 +22,12 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { Program, CreateProgramRequest } from '@/types';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import type { Program, CreateProgramRequest, ServiceType } from '@/types';
 
-const emptyForm: CreateProgramRequest = { title: '', description: '', isActive: true, order: 0 };
+const emptyForm: CreateProgramRequest = { title: '', description: '', isActive: true, order: 0, serviceTypeId: undefined };
 
 function TableSkeleton() {
   return (
@@ -70,6 +73,12 @@ export function ProgramsPage() {
     queryFn: programsApi.getAll,
   });
 
+  const { data: serviceTypesRes } = useQuery({
+    queryKey: ['service-types'],
+    queryFn: serviceTypesApi.getAll,
+  });
+  const serviceTypes: ServiceType[] = serviceTypesRes ? (extractData(serviceTypesRes) as ServiceType[] ?? []) : [];
+
   const programs: Program[] = response ? (extractData(response) as Program[] ?? []) : [];
 
   const createMutation = useMutation({
@@ -109,7 +118,7 @@ export function ProgramsPage() {
 
   const openEdit = (p: Program) => {
     setEditing(p);
-    setForm({ title: p.title, description: p.description ?? '', isActive: p.isActive ?? true, order: p.order ?? 0 });
+    setForm({ title: p.title, description: p.description ?? '', isActive: p.isActive ?? true, order: p.order ?? 0, serviceTypeId: p.serviceTypeId });
     setIsModalOpen(true);
   };
 
@@ -150,16 +159,18 @@ export function ProgramsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Title</TableHead>
-                <TableHead>Description</TableHead>
+                <TableHead>Service Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {programs.map((p) => (
+              {programs.map((p) => {
+                const stName = serviceTypes.find(st => String(st.id) === String(p.serviceTypeId))?.name;
+                return (
                 <TableRow key={p.id}>
                   <TableCell className="font-medium">{p.title}</TableCell>
-                  <TableCell className="text-muted-foreground max-w-xs truncate">{p.description || '—'}</TableCell>
+                  <TableCell className="text-muted-foreground">{stName || '—'}</TableCell>
                   <TableCell>
                     <Badge variant={p.isActive ? 'success' : 'secondary'}>
                       {p.isActive ? 'Active' : 'Inactive'}
@@ -182,7 +193,8 @@ export function ProgramsPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         )}
@@ -206,6 +218,23 @@ export function ProgramsPage() {
               <Textarea id="description" value={form.description ?? ''}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 placeholder="Short description of this program" rows={3} />
+            </div>
+            <div className="space-y-2">
+              <Label>Service Type</Label>
+              <Select
+                value={form.serviceTypeId ? String(form.serviceTypeId) : ''}
+                onValueChange={(v) => setForm({ ...form, serviceTypeId: v ? Number(v) : undefined })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select service type (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {serviceTypes.map((st) => (
+                    <SelectItem key={st.id} value={String(st.id)}>{st.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

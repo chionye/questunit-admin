@@ -198,6 +198,7 @@ export interface Tool {
   basePrice?: number;
   requirements?: Record<string, unknown>;
   status?: string;
+  serviceTypeId?: number;
   createdAt?: string;
   updatedAt?: string;
   [key: string]: unknown;
@@ -210,6 +211,7 @@ export interface CreateToolRequest {
   basePrice?: number;
   requirements?: Record<string, unknown>;
   status?: string;
+  serviceTypeId?: number;
 }
 
 export interface UpdateToolRequest {
@@ -219,6 +221,7 @@ export interface UpdateToolRequest {
   basePrice?: number;
   requirements?: Record<string, unknown>;
   status?: string;
+  serviceTypeId?: number;
 }
 
 // Program types
@@ -228,11 +231,12 @@ export interface Program {
   description?: string;
   isActive?: boolean;
   order?: number;
+  serviceTypeId?: number;
   stages?: ProgramStage[];
   createdAt?: string;
 }
-export interface CreateProgramRequest { title: string; description?: string; isActive?: boolean; order?: number; }
-export interface UpdateProgramRequest { title?: string; description?: string; isActive?: boolean; order?: number; }
+export interface CreateProgramRequest { title: string; description?: string; isActive?: boolean; order?: number; serviceTypeId?: number; }
+export interface UpdateProgramRequest { title?: string; description?: string; isActive?: boolean; order?: number; serviceTypeId?: number; }
 
 export interface ProgramStage {
   id: number;

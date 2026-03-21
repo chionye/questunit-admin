@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { toolsApi } from '@/api/endpoints';
+import { toolsApi, serviceTypesApi } from '@/api/endpoints';
 import { extractData, normalizeId } from '@/hooks/useApiData';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
@@ -42,7 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { Tool, CreateToolRequest, UpdateToolRequest } from '@/types';
+import type { Tool, CreateToolRequest, UpdateToolRequest, ServiceType } from '@/types';
 
 const emptyForm: CreateToolRequest = {
   name: '',
@@ -50,6 +50,7 @@ const emptyForm: CreateToolRequest = {
   category: '',
   basePrice: undefined,
   status: 'active',
+  serviceTypeId: undefined,
 };
 
 function ToolsTableSkeleton() {
@@ -95,6 +96,12 @@ export function ToolsPage() {
     queryKey: ['tools'],
     queryFn: toolsApi.getAll,
   });
+
+  const { data: serviceTypesRes } = useQuery({
+    queryKey: ['service-types'],
+    queryFn: serviceTypesApi.getAll,
+  });
+  const serviceTypes: ServiceType[] = serviceTypesRes ? (extractData(serviceTypesRes) as ServiceType[] ?? []) : [];
 
   const tools: Tool[] = response ? (extractData(response) as Tool[] ?? []) : [];
 
@@ -149,6 +156,7 @@ export function ToolsPage() {
       category: tool.category || '',
       basePrice: tool.basePrice,
       status: tool.status || 'active',
+      serviceTypeId: tool.serviceTypeId,
     });
     setIsModalOpen(true);
   };
@@ -199,8 +207,8 @@ export function ToolsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>Service Type</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Price</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -208,13 +216,12 @@ export function ToolsPage() {
             <TableBody>
               {tools.map((tool) => {
                 const id = normalizeId(tool as unknown as Record<string, unknown>);
+                const stName = serviceTypes.find(st => String(st.id) === String(tool.serviceTypeId))?.name;
                 return (
                   <TableRow key={id}>
                     <TableCell className="font-medium">{tool.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{stName || '—'}</TableCell>
                     <TableCell className="text-muted-foreground">{tool.category || '—'}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {tool.basePrice != null ? `$${tool.basePrice}` : '—'}
-                    </TableCell>
                     <TableCell>
                       <Badge variant={tool.status === 'active' ? 'success' : 'secondary'}>
                         {tool.status || '—'}
@@ -309,6 +316,23 @@ export function ToolsPage() {
                 onChange={(e) => setForm({ ...form, basePrice: e.target.value ? Number(e.target.value) : undefined })}
                 placeholder="25"
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Service Type</Label>
+              <Select
+                value={form.serviceTypeId ? String(form.serviceTypeId) : ''}
+                onValueChange={(v) => setForm({ ...form, serviceTypeId: v ? Number(v) : undefined })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select service type (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {serviceTypes.map((st) => (
+                    <SelectItem key={st.id} value={String(st.id)}>{st.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex gap-3 pt-2">
               <Button type="button" variant="outline" className="flex-1" onClick={closeModal}>
