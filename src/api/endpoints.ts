@@ -6,6 +6,7 @@ import type {
   Renderer,
   ApproveRendererRequest,
   RejectRendererRequest,
+  RequesterUser,
   Service,
   ServiceType,
   Tool,
@@ -37,18 +38,44 @@ export const dashboardApi = {
 
 // Renderers
 export const renderersApi = {
-  getPending: () =>
-    api.get<ApiResponse<Renderer[]>>('/admin/renderers/pending'),
+  getPending: (params?: { page?: number; limit?: number }) => {
+    const p: Record<string, string> = {};
+    if (params?.page) p.page = String(params.page);
+    if (params?.limit) p.limit = String(params.limit);
+    const query = new URLSearchParams(p).toString();
+    return api.get<ApiResponse<Renderer[]>>(`/admin/renderers/pending${query ? `?${query}` : ''}`);
+  },
   approve: (userId: string, data: ApproveRendererRequest) =>
     api.post<ApiResponse<Renderer>>(`/admin/renderers/${userId}/approve`, data),
   reject: (userId: string, data: RejectRendererRequest) =>
     api.post<ApiResponse<Renderer>>(`/admin/renderers/${userId}/reject`, data),
 };
 
+// Requesters
+export const requestersApi = {
+  getAll: (params?: { status?: string; search?: string; page?: number; limit?: number }) => {
+    const p: Record<string, string> = { role: 'requester' };
+    if (params?.status) p.status = params.status;
+    if (params?.search) p.search = params.search;
+    if (params?.page) p.page = String(params.page);
+    if (params?.limit) p.limit = String(params.limit);
+    return api.get<ApiResponse<RequesterUser[]>>(`/admin/users?${new URLSearchParams(p).toString()}`);
+  },
+  getById: (userId: string) =>
+    api.get<ApiResponse<RequesterUser>>(`/admin/users/${userId}`),
+  updateStatus: (userId: string, status: string, reason?: string) =>
+    api.put<ApiResponse<{ userId: number; status: string }>>(`/admin/users/${userId}/status`, { status, reason }),
+};
+
 // Services
 export const servicesApi = {
-  getAll: () =>
-    api.get<ApiResponse<Service[]>>('/admin/services'),
+  getAll: (params?: { page?: number; limit?: number }) => {
+    const p: Record<string, string> = {};
+    if (params?.page) p.page = String(params.page);
+    if (params?.limit) p.limit = String(params.limit);
+    const query = new URLSearchParams(p).toString();
+    return api.get<ApiResponse<Service[]>>(`/admin/services${query ? `?${query}` : ''}`);
+  },
   create: (data: FormData) =>
     api.post<ApiResponse<Service>>('/admin/services', data, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -63,8 +90,13 @@ export const servicesApi = {
 
 // Service Types
 export const serviceTypesApi = {
-  getAll: () =>
-    api.get<ApiResponse<ServiceType[]>>('/service-types'),
+  getAll: (params?: { page?: number; limit?: number }) => {
+    const p: Record<string, string> = {};
+    if (params?.page) p.page = String(params.page);
+    if (params?.limit) p.limit = String(params.limit);
+    const query = new URLSearchParams(p).toString();
+    return api.get<ApiResponse<ServiceType[]>>(`/service-types${query ? `?${query}` : ''}`);
+  },
   create: (data: FormData) =>
     api.post<ApiResponse<ServiceType>>('/admin/service-types', data, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -79,8 +111,13 @@ export const serviceTypesApi = {
 
 // Tools
 export const toolsApi = {
-  getAll: () =>
-    api.get<ApiResponse<Tool[]>>('/admin/tools'),
+  getAll: (params?: { page?: number; limit?: number }) => {
+    const p: Record<string, string> = {};
+    if (params?.page) p.page = String(params.page);
+    if (params?.limit) p.limit = String(params.limit);
+    const query = new URLSearchParams(p).toString();
+    return api.get<ApiResponse<Tool[]>>(`/admin/tools${query ? `?${query}` : ''}`);
+  },
   create: (data: CreateToolRequest) =>
     api.post<ApiResponse<Tool>>('/admin/tools', data),
   update: (toolId: string, data: UpdateToolRequest) =>
@@ -91,8 +128,13 @@ export const toolsApi = {
 
 // Programs
 export const programsApi = {
-  getAll: () =>
-    api.get<ApiResponse<Program[]>>('/admin/programs'),
+  getAll: (params?: { page?: number; limit?: number }) => {
+    const p: Record<string, string> = {};
+    if (params?.page) p.page = String(params.page);
+    if (params?.limit) p.limit = String(params.limit);
+    const query = new URLSearchParams(p).toString();
+    return api.get<ApiResponse<Program[]>>(`/admin/programs${query ? `?${query}` : ''}`);
+  },
   create: (data: CreateProgramRequest) =>
     api.post<ApiResponse<Program>>('/admin/programs', data),
   update: (id: number, data: UpdateProgramRequest) =>

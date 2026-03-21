@@ -5,7 +5,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Pencil, Percent } from 'lucide-react';
 import { servicesApi } from '@/api/endpoints';
-import { extractData, normalizeId } from '@/hooks/useApiData';
+import { extractData, extractPagination, normalizeId } from '@/hooks/useApiData';
+import { Pagination } from '@/components/ui/pagination';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,17 +34,21 @@ function TableSkeletonLoader() {
   );
 }
 
+const PAGE_SIZE = 10;
+
 export function ServiceCommissionsPage() {
   const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [commission, setCommission] = useState<string>('');
 
   const { data: response, isLoading, error } = useQuery({
-    queryKey: ['services'],
-    queryFn: servicesApi.getAll,
+    queryKey: ['services', page],
+    queryFn: () => servicesApi.getAll({ page, limit: PAGE_SIZE }),
   });
 
   const services: Service[] = response ? (extractData(response) as Service[] ?? []) : [];
+  const { totalCount, totalPages } = response ? extractPagination(response) : { totalCount: 0, totalPages: 1 };
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: FormData }) =>
@@ -94,6 +99,7 @@ export function ServiceCommissionsPage() {
             <p className='text-gray-300 text-sm mt-1'>Add services first, then set their commissions here</p>
           </div>
         ) : (
+          <>
           <Table>
             <TableHeader>
               <TableRow>
@@ -142,6 +148,8 @@ export function ServiceCommissionsPage() {
               })}
             </TableBody>
           </Table>
+          <Pagination currentPage={page} totalPages={totalPages} totalCount={totalCount} pageSize={PAGE_SIZE} onPageChange={setPage} />
+          </>
         )}
       </Card>
 

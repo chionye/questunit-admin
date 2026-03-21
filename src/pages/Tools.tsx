@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { toolsApi, serviceTypesApi } from '@/api/endpoints';
-import { extractData, normalizeId } from '@/hooks/useApiData';
+import { extractData, extractPagination, normalizeId } from '@/hooks/useApiData';
+import { Pagination } from '@/components/ui/pagination';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -85,25 +86,29 @@ function ToolsTableSkeleton() {
   );
 }
 
+const PAGE_SIZE = 10;
+
 export function ToolsPage() {
   const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTool, setEditingTool] = useState<Tool | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Tool | null>(null);
   const [form, setForm] = useState<CreateToolRequest>(emptyForm);
 
   const { data: response, isLoading, error } = useQuery({
-    queryKey: ['tools'],
-    queryFn: toolsApi.getAll,
+    queryKey: ['tools', page],
+    queryFn: () => toolsApi.getAll({ page, limit: PAGE_SIZE }),
   });
 
   const { data: serviceTypesRes } = useQuery({
-    queryKey: ['service-types'],
-    queryFn: serviceTypesApi.getAll,
+    queryKey: ['service-types', 'all'],
+    queryFn: () => serviceTypesApi.getAll({ limit: 100 }),
   });
   const serviceTypes: ServiceType[] = serviceTypesRes ? (extractData(serviceTypesRes) as ServiceType[] ?? []) : [];
 
   const tools: Tool[] = response ? (extractData(response) as Tool[] ?? []) : [];
+  const { totalCount, totalPages } = response ? extractPagination(response) : { totalCount: 0, totalPages: 1 };
 
   const createMutation = useMutation({
     mutationFn: (data: CreateToolRequest) => toolsApi.create(data),
@@ -203,6 +208,7 @@ export function ToolsPage() {
             <p className="text-gray-300 text-sm mt-1">Create your first tool to get started</p>
           </div>
         ) : (
+          <>
           <Table>
             <TableHeader>
               <TableRow>
@@ -252,6 +258,8 @@ export function ToolsPage() {
               })}
             </TableBody>
           </Table>
+          <Pagination currentPage={page} totalPages={totalPages} totalCount={totalCount} pageSize={PAGE_SIZE} onPageChange={setPage} />
+          </>
         )}
       </div>
 

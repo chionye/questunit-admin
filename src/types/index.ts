@@ -49,6 +49,35 @@ export interface RecentUser {
   } | null;
 }
 
+export interface RequesterDocument {
+  type: string;
+  documentNumber: string | null;
+  status: string;
+  url: string;
+  createdAt: string;
+}
+
+export interface RequesterUser {
+  id: number;
+  email: string | null;
+  phone: string | null;
+  role: string;
+  status: string;
+  createdAt: string;
+  UserProfile: {
+    firstName: string | null;
+    lastName: string | null;
+    dob: string | null;
+    gender: string | null;
+    profilePhoto: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+  } | null;
+  Documents?: RequesterDocument[];
+  Wallet?: { balance: number } | null;
+}
+
 export interface RecentService {
   id: number;
   name: string;

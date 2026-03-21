@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Check, X, Eye } from 'lucide-react';
 import { renderersApi } from '@/api/endpoints';
-import { extractData, normalizeId } from '@/hooks/useApiData';
+import { extractData, extractPagination, normalizeId } from '@/hooks/useApiData';
+import { Pagination } from '@/components/ui/pagination';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,8 +35,11 @@ function TableSkeletonLoader() {
   );
 }
 
+const PAGE_SIZE = 10;
+
 export function RenderersPage() {
   const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
   const [selectedRenderer, setSelectedRenderer] = useState<Renderer | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'reject' | 'view' | null>(null);
 
@@ -45,11 +49,12 @@ export function RenderersPage() {
   const [rejectNotes, setRejectNotes] = useState('');
 
   const { data: response, isLoading, error } = useQuery({
-    queryKey: ['pendingRenderers'],
-    queryFn: renderersApi.getPending,
+    queryKey: ['pendingRenderers', page],
+    queryFn: () => renderersApi.getPending({ page, limit: PAGE_SIZE }),
   });
 
   const renderers: Renderer[] = response ? (extractData(response) as Renderer[] ?? []) : [];
+  const { totalCount, totalPages } = response ? extractPagination(response) : { totalCount: 0, totalPages: 1 };
 
   const approveMutation = useMutation({
     mutationFn: ({ userId, data }: { userId: string; data: ApproveRendererRequest }) =>
@@ -57,6 +62,7 @@ export function RenderersPage() {
     onSuccess: () => {
       toast.success('Renderer approved successfully');
       queryClient.invalidateQueries({ queryKey: ['pendingRenderers'] });
+      setPage(1);
       closeModal();
     },
     onError: () => toast.error('Failed to approve renderer'),
@@ -123,6 +129,7 @@ export function RenderersPage() {
             <p className="text-gray-300 text-sm mt-1">All applications have been reviewed</p>
           </div>
         ) : (
+          <>
           <Table>
             <TableHeader>
               <TableRow>
@@ -170,6 +177,8 @@ export function RenderersPage() {
               })}
             </TableBody>
           </Table>
+          <Pagination currentPage={page} totalPages={totalPages} totalCount={totalCount} pageSize={PAGE_SIZE} onPageChange={setPage} />
+          </>
         )}
       </Card>
 

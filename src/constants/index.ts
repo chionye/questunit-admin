@@ -3,6 +3,7 @@
 import {
   LayoutDashboard,
   Users,
+  UserCheck,
   Box,
   Grid3X3,
   Wrench,
@@ -15,6 +16,7 @@ import {
 export const navItems = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
   { path: "/renderers", label: "Pending Renderers", icon: Users },
+  { path: "/requesters", label: "Requesters", icon: UserCheck },
   { path: "/services", label: "Services", icon: Box },
   { path: "/service-types", label: "Service Types & Pricing", icon: Grid3X3 },
   { path: "/service-commissions", label: "Commissions", icon: CircleDollarSign },

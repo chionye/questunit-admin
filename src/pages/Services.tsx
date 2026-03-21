@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Plus, Pencil, Trash2, Upload, X } from 'lucide-react';
 import { servicesApi } from '@/api/endpoints';
-import { extractData, normalizeId } from '@/hooks/useApiData';
+import { extractData, extractPagination, normalizeId } from '@/hooks/useApiData';
+import { Pagination } from '@/components/ui/pagination';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,8 +45,11 @@ function TableSkeletonLoader() {
   );
 }
 
+const PAGE_SIZE = 10;
+
 export function ServicesPage() {
   const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
@@ -54,11 +58,12 @@ export function ServicesPage() {
   const [iconPreview, setIconPreview] = useState<string | null>(null);
 
   const { data: response, isLoading, error } = useQuery({
-    queryKey: ['services'],
-    queryFn: servicesApi.getAll,
+    queryKey: ['services', page],
+    queryFn: () => servicesApi.getAll({ page, limit: PAGE_SIZE }),
   });
 
   const services: Service[] = response ? (extractData(response) as Service[] ?? []) : [];
+  const { totalCount, totalPages } = response ? extractPagination(response) : { totalCount: 0, totalPages: 1 };
 
   const buildFormData = (fields: CreateServiceRequest, file: File | null): FormData => {
     const fd = new FormData();
@@ -150,6 +155,7 @@ export function ServicesPage() {
             <p className="text-gray-300 text-sm mt-1">Create your first service to get started</p>
           </div>
         ) : (
+          <>
           <Table>
             <TableHeader>
               <TableRow>
@@ -194,6 +200,8 @@ export function ServicesPage() {
               })}
             </TableBody>
           </Table>
+          <Pagination currentPage={page} totalPages={totalPages} totalCount={totalCount} pageSize={PAGE_SIZE} onPageChange={setPage} />
+          </>
         )}
       </Card>
 

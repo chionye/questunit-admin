@@ -5,7 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { Plus, Pencil, Trash2, Upload, X } from "lucide-react";
 import { serviceTypesApi, servicesApi } from "@/api/endpoints";
-import { extractData, normalizeId } from "@/hooks/useApiData";
+import { extractData, extractPagination, normalizeId } from "@/hooks/useApiData";
+import { Pagination } from "@/components/ui/pagination";
 import { Header } from "@/components/layout/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,8 +83,11 @@ function TableSkeletonLoader() {
 const fmt = (v: number | null | undefined, suffix = '') =>
   v != null ? `${v}${suffix}` : '—';
 
+const PAGE_SIZE = 10;
+
 export function ServiceTypesPage() {
   const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingType, setEditingType] = useState<ServiceType | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ServiceType | null>(null);
@@ -92,17 +96,18 @@ export function ServiceTypesPage() {
   const [iconPreview, setIconPreview] = useState<string | null>(null);
 
   const { data: response, isLoading, error } = useQuery({
-    queryKey: ["serviceTypes"],
-    queryFn: serviceTypesApi.getAll,
+    queryKey: ["serviceTypes", page],
+    queryFn: () => serviceTypesApi.getAll({ page, limit: PAGE_SIZE }),
   });
   const { data: servicesResponse } = useQuery({
-    queryKey: ["services"],
-    queryFn: servicesApi.getAll,
+    queryKey: ["services", "all"],
+    queryFn: () => servicesApi.getAll({ limit: 100 }),
   });
 
   const serviceTypes: ServiceType[] = response
     ? ((extractData(response) as ServiceType[]) ?? [])
     : [];
+  const { totalCount, totalPages } = response ? extractPagination(response) : { totalCount: 0, totalPages: 1 };
   const services: Service[] = servicesResponse
     ? ((extractData(servicesResponse) as Service[]) ?? [])
     : [];
@@ -226,6 +231,7 @@ export function ServiceTypesPage() {
             <p className='text-gray-300 text-sm mt-1'>Create your first service type</p>
           </div>
         ) : (
+          <>
           <Table>
             <TableHeader>
               <TableRow>
@@ -272,6 +278,8 @@ export function ServiceTypesPage() {
               })}
             </TableBody>
           </Table>
+          <Pagination currentPage={page} totalPages={totalPages} totalCount={totalCount} pageSize={PAGE_SIZE} onPageChange={setPage} />
+          </>
         )}
       </Card>
 

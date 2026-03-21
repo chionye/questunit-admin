@@ -5,6 +5,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { LoginPage } from '@/pages/Login';
 import { DashboardPage } from '@/pages/Dashboard';
 import { RenderersPage } from '@/pages/Renderers';
+import { RequestersPage } from '@/pages/Requesters';
 import { ServicesPage } from '@/pages/Services';
 import { ServiceTypesPage } from '@/pages/ServiceTypes';
 import { ToolsPage } from '@/pages/Tools';
@@ -32,6 +33,7 @@ function App() {
           <Route element={<DashboardLayout />}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/renderers" element={<RenderersPage />} />
+            <Route path="/requesters" element={<RequestersPage />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/service-types" element={<ServiceTypesPage />} />
             <Route path="/service-commissions" element={<ServiceCommissionsPage />} />

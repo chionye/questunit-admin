@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Plus, Pencil, Trash2, ChevronRight } from 'lucide-react';
 import { programsApi, serviceTypesApi } from '@/api/endpoints';
-import { extractData } from '@/hooks/useApiData';
+import { extractData, extractPagination } from '@/hooks/useApiData';
+import { Pagination } from '@/components/ui/pagination';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,26 +61,30 @@ function TableSkeleton() {
   );
 }
 
+const PAGE_SIZE = 10;
+
 export function ProgramsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<Program | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Program | null>(null);
   const [form, setForm] = useState<CreateProgramRequest>(emptyForm);
 
   const { data: response, isLoading, error } = useQuery({
-    queryKey: ['programs'],
-    queryFn: programsApi.getAll,
+    queryKey: ['programs', page],
+    queryFn: () => programsApi.getAll({ page, limit: PAGE_SIZE }),
   });
 
   const { data: serviceTypesRes } = useQuery({
-    queryKey: ['service-types'],
-    queryFn: serviceTypesApi.getAll,
+    queryKey: ['service-types', 'all'],
+    queryFn: () => serviceTypesApi.getAll({ limit: 100 }),
   });
   const serviceTypes: ServiceType[] = serviceTypesRes ? (extractData(serviceTypesRes) as ServiceType[] ?? []) : [];
 
   const programs: Program[] = response ? (extractData(response) as Program[] ?? []) : [];
+  const { totalCount, totalPages } = response ? extractPagination(response) : { totalCount: 0, totalPages: 1 };
 
   const createMutation = useMutation({
     mutationFn: programsApi.create,
@@ -155,6 +160,7 @@ export function ProgramsPage() {
             <p className="text-gray-300 text-sm mt-1">Create your first program to get started</p>
           </div>
         ) : (
+          <>
           <Table>
             <TableHeader>
               <TableRow>
@@ -197,6 +203,8 @@ export function ProgramsPage() {
               })}
             </TableBody>
           </Table>
+          <Pagination currentPage={page} totalPages={totalPages} totalCount={totalCount} pageSize={PAGE_SIZE} onPageChange={setPage} />
+          </>
         )}
       </div>
 
