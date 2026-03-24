@@ -4,7 +4,7 @@ import axios from "axios";
 import { useAuthStore } from "../stores/authStore";
 
 const BASE_URL =
-  import.meta.env.VITE_API_DEV_URL || "https://questbackendv2.onrender.com/api/v1";
+  import.meta.env.VITE_API_DEV_URL || "https://api.questunit.com/api/v1";
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -31,10 +31,10 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       useAuthStore.getState().logout();
-      window.location.href = '/';
+      window.location.href = "/";
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;
