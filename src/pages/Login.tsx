@@ -26,7 +26,6 @@ export function LoginPage() {
   const loginMutation = useMutation({
     mutationFn: () => authApi.login({ email, password }),
     onSuccess: (response) => {
-      console.log(response.data);
       const data = response?.data;
       const token = data?.token || data?.data?.token || null;
       const user = data?.user || data?.data?.user || null;

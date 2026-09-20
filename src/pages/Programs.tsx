@@ -17,7 +17,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -213,6 +213,9 @@ export function ProgramsPage() {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit Program' : 'Create Program'}</DialogTitle>
+            <DialogDescription>
+              {editing ? 'Update the program details below.' : 'Fill in the details to create a new program.'}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -230,14 +233,14 @@ export function ProgramsPage() {
             <div className="space-y-2">
               <Label>Service Type</Label>
               <Select
-                value={form.serviceTypeId ? String(form.serviceTypeId) : ''}
-                onValueChange={(v) => setForm({ ...form, serviceTypeId: v ? Number(v) : undefined })}
+                value={form.serviceTypeId ? String(form.serviceTypeId) : 'none'}
+                onValueChange={(v) => setForm({ ...form, serviceTypeId: v === 'none' ? undefined : Number(v) })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select service type (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {serviceTypes.map((st) => (
                     <SelectItem key={st.id} value={String(st.id)}>{st.name}</SelectItem>
                   ))}

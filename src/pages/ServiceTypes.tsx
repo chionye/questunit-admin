@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { Plus, Pencil, Trash2, Upload, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, X, ExternalLink } from "lucide-react";
 import { serviceTypesApi, servicesApi } from "@/api/endpoints";
 import { extractData, extractPagination, normalizeId } from "@/hooks/useApiData";
 import { Pagination } from "@/components/ui/pagination";
@@ -61,6 +61,7 @@ const emptyForm = {
   perKmNight: undefined as number | undefined,
   cancellationFee: undefined as number | undefined,
   serviceCharge: undefined as number | undefined,
+  videoUrl: "",
 };
 
 function TableSkeletonLoader() {
@@ -129,6 +130,7 @@ export function ServiceTypesPage() {
     if (fields.perKmNight != null) fd.append("perKmNight", String(fields.perKmNight));
     if (fields.cancellationFee != null) fd.append("cancellationFee", String(fields.cancellationFee));
     if (fields.serviceCharge != null) fd.append("serviceCharge", String(fields.serviceCharge));
+    if (fields.videoUrl) fd.append("videoUrl", fields.videoUrl);
     if (file) fd.append("icon", file);
     return fd;
   };
@@ -175,6 +177,7 @@ export function ServiceTypesPage() {
       perKmNight: st.perKmNight ?? undefined,
       cancellationFee: st.cancellationFee ?? undefined,
       serviceCharge: st.serviceCharge ?? undefined,
+      videoUrl: st.videoUrl || "",
     });
     setIsModalOpen(true);
   };
@@ -239,11 +242,7 @@ export function ServiceTypesPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Base Price</TableHead>
                 <TableHead>Request Fee</TableHead>
-                <TableHead>Wait Time/min</TableHead>
-                <TableHead>Per KM (Day)</TableHead>
-                <TableHead>Per KM (Night)</TableHead>
-                <TableHead>Cancel Fee %</TableHead>
-                <TableHead>Svc Charge %</TableHead>
+                <TableHead>Video</TableHead>
                 <TableHead className='text-right'>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -262,11 +261,15 @@ export function ServiceTypesPage() {
                     <TableCell className='font-medium whitespace-nowrap'>{st.name}</TableCell>
                     <TableCell className='text-gray-600'>{fmt(st.basePrice as number, '')}</TableCell>
                     <TableCell className='text-gray-600'>{fmt(st.requestFee)}</TableCell>
-                    <TableCell className='text-gray-600'>{fmt(st.waitTime)}</TableCell>
-                    <TableCell className='text-gray-600'>{fmt(st.perKmMorning)}</TableCell>
-                    <TableCell className='text-gray-600'>{fmt(st.perKmNight)}</TableCell>
-                    <TableCell className='text-gray-600'>{fmt(st.cancellationFee, '%')}</TableCell>
-                    <TableCell className='text-gray-600'>{fmt(st.serviceCharge, '%')}</TableCell>
+                    <TableCell>
+                      {st.videoUrl ? (
+                        <a href={st.videoUrl as string} target='_blank' rel='noreferrer' className='text-blue-500 hover:underline text-sm'>
+                          <ExternalLink size={16} className='inline' />
+                        </a>
+                      ) : (
+                        <span className='text-gray-400'>-</span>
+                      )}
+                    </TableCell>
                     <TableCell className='text-right'>
                       <div className='flex items-center justify-end gap-1'>
                         <Button variant='ghost' size='icon' onClick={() => openEdit(st)}><Pencil size={16} /></Button>
@@ -368,6 +371,16 @@ export function ServiceTypesPage() {
                   <input type='file' accept='.svg,image/svg+xml' className='hidden' onChange={handleIconChange} />
                 </label>
               </div>
+            </div>
+
+            <div className='space-y-2'>
+              <Label>Training Video URL</Label>
+              <Input
+                value={form.videoUrl || ""}
+                onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
+                placeholder='https://youtube.com/watch?v=...'
+              />
+              <p className='text-xs text-gray-500'>YouTube or video link for renderer training</p>
             </div>
             <DialogFooter>
               <Button type='button' variant='secondary' onClick={closeModal}>Cancel</Button>

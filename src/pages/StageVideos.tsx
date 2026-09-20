@@ -15,7 +15,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -222,6 +222,9 @@ export function StageVideosPage() {
         <DialogContent className="sm:max-w-[580px]">
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit Video' : 'Add Video'}</DialogTitle>
+            <DialogDescription>
+              {editing ? 'Update the video details below.' : 'Add a YouTube video to this stage.'}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">

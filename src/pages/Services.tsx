@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, Upload, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, X, Search } from 'lucide-react';
 import { servicesApi } from '@/api/endpoints';
 import { extractData, extractPagination, normalizeId } from '@/hooks/useApiData';
 import { Pagination } from '@/components/ui/pagination';
@@ -17,7 +17,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import type { Service, CreateServiceRequest } from '@/types';
+import type { Service, CreateServiceRequest, FormConfigField } from '@/types';
 
 const emptyForm: CreateServiceRequest = {
   name: '',
@@ -26,6 +26,7 @@ const emptyForm: CreateServiceRequest = {
   basePrice: undefined,
   estimatedDuration: undefined,
   isActive: true,
+  formConfig: null,
 };
 
 function TableSkeletonLoader() {
@@ -50,16 +51,18 @@ const PAGE_SIZE = 10;
 export function ServicesPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
   const [form, setForm] = useState<CreateServiceRequest>(emptyForm);
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [iconPreview, setIconPreview] = useState<string | null>(null);
+  const [formConfigJson, setFormConfigJson] = useState<string>('');
 
   const { data: response, isLoading, error } = useQuery({
-    queryKey: ['services', page],
-    queryFn: () => servicesApi.getAll({ page, limit: PAGE_SIZE }),
+    queryKey: ['services', page, search],
+    queryFn: () => servicesApi.getAll({ page, limit: PAGE_SIZE, search: search || undefined }),
   });
 
   const services: Service[] = response ? (extractData(response) as Service[] ?? []) : [];
@@ -73,35 +76,37 @@ export function ServicesPage() {
     if (fields.basePrice != null) fd.append('basePrice', String(fields.basePrice));
     if (fields.estimatedDuration != null) fd.append('estimatedDuration', String(fields.estimatedDuration));
     fd.append('isActive', String(fields.isActive ?? true));
+    if (fields.formConfig != null) fd.append('formConfig', JSON.stringify(fields.formConfig));
     if (file) fd.append('icon', file);
     return fd;
   };
 
   const createMutation = useMutation({
     mutationFn: (data: FormData) => servicesApi.create(data),
-    onSuccess: () => { toast.success('Service created'); queryClient.invalidateQueries({ queryKey: ['services'] }); closeModal(); },
+    onSuccess: () => { toast.success('Service created'); setPage(1); queryClient.invalidateQueries({ queryKey: ['services'] }); closeModal(); },
     onError: () => toast.error('Failed to create service'),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: FormData }) => servicesApi.update(id, data),
-    onSuccess: () => { toast.success('Service updated'); queryClient.invalidateQueries({ queryKey: ['services'] }); closeModal(); },
+    onSuccess: () => { toast.success('Service updated'); setPage(1); queryClient.invalidateQueries({ queryKey: ['services'] }); closeModal(); },
     onError: () => toast.error('Failed to update service'),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => servicesApi.delete(id),
-    onSuccess: () => { toast.success('Service deleted'); queryClient.invalidateQueries({ queryKey: ['services'] }); setDeleteTarget(null); },
+    onSuccess: () => { toast.success('Service deleted'); setPage(1); queryClient.invalidateQueries({ queryKey: ['services'] }); setDeleteTarget(null); },
     onError: () => toast.error('Failed to delete service'),
   });
 
-  const closeModal = () => { setIsModalOpen(false); setEditingService(null); setForm(emptyForm); setIconFile(null); setIconPreview(null); };
+  const closeModal = () => { setIsModalOpen(false); setEditingService(null); setForm(emptyForm); setIconFile(null); setIconPreview(null); setFormConfigJson(''); };
 
-  const openCreate = () => { setForm(emptyForm); setEditingService(null); setIsModalOpen(true); };
+  const openCreate = () => { setForm(emptyForm); setEditingService(null); setFormConfigJson(''); setIsModalOpen(true); };
 
   const openEdit = (service: Service) => {
     setEditingService(service);
-    setForm({ name: service.name || '', description: service.description || '', category: service.category || '', basePrice: service.basePrice ? Number(service.basePrice) : undefined, estimatedDuration: service.estimatedDuration ?? undefined, isActive: service.isActive ?? true });
+    setForm({ name: service.name || '', description: service.description || '', category: service.category || '', basePrice: service.basePrice ? Number(service.basePrice) : undefined, estimatedDuration: service.estimatedDuration ?? undefined, isActive: service.isActive ?? true, formConfig: service.formConfig ?? null });
+    setFormConfigJson(JSON.stringify(service.formConfig ?? [], null, 2));
     setIsModalOpen(true);
   };
 
@@ -117,10 +122,31 @@ export function ServicesPage() {
     setIconPreview(URL.createObjectURL(file));
   };
 
+  const parseFormConfig = (): { ok: boolean; value?: FormConfigField[] | null } => {
+    const trimmed = formConfigJson.trim();
+    if (!trimmed) return { ok: true, value: null };
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed === null) return { ok: true, value: null };
+      if (!Array.isArray(parsed)) {
+        throw new Error('formConfig must be an array');
+      }
+      return { ok: true, value: parsed };
+    } catch (err) {
+      toast.error('Request preferences must be valid JSON');
+      return { ok: false };
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) { toast.error('Name is required'); return; }
-    const fd = buildFormData(form, iconFile);
+    if (!form.description?.trim()) { toast.error('Description is required'); return; }
+    if (!form.category?.trim()) { toast.error('Category is required'); return; }
+    if (form.basePrice == null || Number.isNaN(form.basePrice) || form.basePrice <= 0) { toast.error('Base price must be greater than 0'); return; }
+    const config = parseFormConfig();
+    if (!config.ok) return;
+    const fd = buildFormData({ ...form, formConfig: config.value ?? null }, iconFile);
     if (editingService) {
       const id = normalizeId(editingService as unknown as Record<string, unknown>);
       updateMutation.mutate({ id, data: fd });
@@ -144,6 +170,18 @@ export function ServicesPage() {
         }
       />
 
+      <div className="mb-4 flex items-center gap-2">
+        <div className="relative w-full max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search services..."
+            className="pl-9"
+          />
+        </div>
+      </div>
+
       <Card className="overflow-hidden">
         {isLoading ? (
           <TableSkeletonLoader />
@@ -151,8 +189,8 @@ export function ServicesPage() {
           <div className="p-8 text-center"><p className="text-red-500">Failed to load services</p></div>
         ) : services.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-gray-400 text-lg">No services yet</p>
-            <p className="text-gray-300 text-sm mt-1">Create your first service to get started</p>
+            <p className="text-gray-400 text-lg">{search ? 'No services match your search' : 'No services yet'}</p>
+            <p className="text-gray-300 text-sm mt-1">{search ? 'Try a different search term' : 'Create your first service to get started'}</p>
           </div>
         ) : (
           <>
@@ -218,12 +256,12 @@ export function ServicesPage() {
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Service name" />
             </div>
             <div className="space-y-2">
-              <Label>Description</Label>
+              <Label>Description *</Label>
               <Textarea value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Service description" rows={3} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Category</Label>
+                <Label>Category *</Label>
                 <Input value={form.category || ''} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g. cleaning" />
               </div>
               <div className="space-y-2">
@@ -239,13 +277,29 @@ export function ServicesPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Base Price ($)</Label>
-                <Input type="number" value={form.basePrice ?? ''} onChange={(e) => setForm({ ...form, basePrice: e.target.value ? Number(e.target.value) : undefined })} placeholder="50" />
+                <Label>Base Price (NGN) *</Label>
+                <Input type="number" value={form.basePrice ?? ''} onChange={(e) => setForm({ ...form, basePrice: e.target.value ? Number(e.target.value) : undefined })} placeholder="5000" />
               </div>
               <div className="space-y-2">
                 <Label>Duration (min)</Label>
                 <Input type="number" value={form.estimatedDuration ?? ''} onChange={(e) => setForm({ ...form, estimatedDuration: e.target.value ? Number(e.target.value) : undefined })} placeholder="120" />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Request preferences (dynamic form)</Label>
+              <Textarea
+                value={formConfigJson}
+                onChange={(e) => setFormConfigJson(e.target.value)}
+                placeholder={'[\n  {\n    "title": "How many?",\n    "type": "select",\n    "name": "number",\n    "options": [{ "label": "1", "value": "1" }, { "label": "2", "value": "2" }]\n  }\n]'}
+                rows={6}
+              />
+              <p className="text-xs text-gray-500">
+                JSON array of fields shown to the requester for this service. Each field:{" "}
+                <code className="text-gray-600">title</code>,{" "}
+                <code className="text-gray-600">type</code> (select | select-counter | input),{" "}
+                <code className="text-gray-600">name</code>, optional{" "}
+                <code className="text-gray-600">options</code>. Leave empty to use the app&apos;s built-in form.
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Icon (SVG only)</Label>

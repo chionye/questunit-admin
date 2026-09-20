@@ -23,6 +23,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -268,6 +269,9 @@ export function ToolsPage() {
         <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
             <DialogTitle>{editingTool ? 'Edit Tool' : 'Create Tool'}</DialogTitle>
+            <DialogDescription>
+              {editingTool ? 'Update the tool details below.' : 'Fill in the details to create a new tool.'}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -328,14 +332,14 @@ export function ToolsPage() {
             <div className="space-y-2">
               <Label>Service Type</Label>
               <Select
-                value={form.serviceTypeId ? String(form.serviceTypeId) : ''}
-                onValueChange={(v) => setForm({ ...form, serviceTypeId: v ? Number(v) : undefined })}
+                value={form.serviceTypeId ? String(form.serviceTypeId) : 'none'}
+                onValueChange={(v) => setForm({ ...form, serviceTypeId: v === 'none' ? undefined : Number(v) })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select service type (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {serviceTypes.map((st) => (
                     <SelectItem key={st.id} value={String(st.id)}>{st.name}</SelectItem>
                   ))}

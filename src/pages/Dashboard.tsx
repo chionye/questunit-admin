@@ -137,9 +137,15 @@ export function DashboardPage() {
                         </div>
                         <Badge
                           variant={
-                            service.status === "active" ? "success" : "warning"
+                            (service.isActive ?? service.status === "active")
+                              ? "success"
+                              : "warning"
                           }>
-                          {service.status}
+                          {service.isActive === undefined
+                            ? service.status
+                            : service.isActive
+                              ? "Active"
+                              : "Inactive"}
                         </Badge>
                       </div>
                     ))}
