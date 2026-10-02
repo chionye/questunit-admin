@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Check, X, Eye, Search } from 'lucide-react';
-import { renderersApi } from '@/api/endpoints';
+import { renderersApi, serviceTypesApi } from '@/api/endpoints';
 import { extractData, extractPagination, normalizeId } from '@/hooks/useApiData';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Pagination } from '@/components/ui/pagination';
@@ -17,7 +17,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import type { Renderer, ApproveRendererRequest, RejectRendererRequest } from '@/types';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import type { Renderer, ApproveRendererRequest, RejectRendererRequest, ServiceType } from '@/types';
 
 function TableSkeletonLoader() {
   return (
@@ -96,6 +97,36 @@ export function RenderersPage() {
       setServiceRejectReason('');
     },
     onError: () => toast.error('Failed to update service status'),
+  });
+
+  const { data: serviceTypesResponse } = useQuery({
+    queryKey: ['serviceTypes', 'all'],
+    queryFn: () => serviceTypesApi.getAll({ page: 1, limit: 500 }),
+    enabled: actionType === 'view',
+  });
+  const allServiceTypes: ServiceType[] = serviceTypesResponse ? (extractData(serviceTypesResponse) as ServiceType[] ?? []) : [];
+
+  const serviceTypeMutation = useMutation({
+    mutationFn: ({ userServiceId, serviceTypeId }: { userServiceId: number; serviceTypeId: number }) =>
+      renderersApi.updateUserServiceType(userServiceId, serviceTypeId),
+    onSuccess: (_data, { userServiceId, serviceTypeId }) => {
+      toast.success('Service type updated');
+      const picked = allServiceTypes.find((st) => Number(st.id) === serviceTypeId);
+      // The dialog shows a snapshot of the renderer, so update it in place too.
+      setSelectedRenderer((prev) => prev && {
+        ...prev,
+        UserServices: prev.UserServices?.map((us) =>
+          us.id === userServiceId
+            ? { ...us, serviceTypeId, ServiceType: { id: serviceTypeId, name: picked?.name } }
+            : us
+        ),
+      });
+      queryClient.invalidateQueries({ queryKey: ['pendingRenderers'] });
+    },
+    onError: (err: unknown) => {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(message || 'Failed to update service type');
+    },
   });
 
   const handleApproveService = (userServiceId: number) => {
@@ -202,6 +233,7 @@ export function RenderersPage() {
                 <TableHead>Phone</TableHead>
                 <TableHead>Service</TableHead>
                 <TableHead>Service Type</TableHead>
+                <TableHead>Commission Rate</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Applied</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -221,8 +253,16 @@ export function RenderersPage() {
                   new Set(userServices.map((us) => us.Service?.name).filter(Boolean))
                 ) as string[];
                 const serviceTypeList = Array.from(
-                  new Set(userServices.map((us) => us.ServiceType?.name || us.description).filter(Boolean))
+                  new Set(userServices.map((us) => us.ServiceType?.name).filter(Boolean))
                 ) as string[];
+                const commissionRates = Array.from(
+                  new Set(
+                    userServices
+                      // DECIMAL columns arrive from the API as strings
+                      .map((us) => Number(us.Service?.commissionPercentage ?? NaN))
+                      .filter((c) => Number.isFinite(c))
+                  )
+                ).sort((a, b) => a - b);
 
                 return (
                   <TableRow key={id}>
@@ -245,6 +285,11 @@ export function RenderersPage() {
                     </TableCell>
                     <TableCell className="text-gray-600">
                       {serviceTypeList.length > 0 ? serviceTypeList.join(', ') : '—'}
+                    </TableCell>
+                    <TableCell className="text-emerald-600 font-semibold">
+                      {commissionRates.length > 0
+                        ? commissionRates.map((rate) => `${rate}%`).join(', ')
+                        : '—'}
                     </TableCell>
                     <TableCell>
                       <Badge variant="warning">{renderer.status || 'pending'}</Badge>
@@ -313,8 +358,8 @@ export function RenderersPage() {
                         <div key={us.id ?? index} className="border rounded-lg p-3 bg-gray-50">
                           <div className="flex items-center gap-2 mb-1">
                             <Badge variant="default" className="text-xs">{us.Service?.name || 'Unknown service'}</Badge>
-                            {(us.ServiceType?.name || us.description) && (
-                              <Badge variant="secondary" className="text-xs">{us.ServiceType?.name || us.description}</Badge>
+                            {(us.ServiceType?.name) && (
+                              <Badge variant="secondary" className="text-xs">{us.ServiceType?.name}</Badge>
                             )}
                             <Badge variant={us.approvalStatus === 'approved' ? 'default' : us.approvalStatus === 'rejected' ? 'danger' : 'secondary'} className="text-xs">
                               {us.approvalStatus || 'pending'}
@@ -342,11 +387,41 @@ export function RenderersPage() {
                               </div>
                             )}
                           </div>
-                          {(us.ServiceType?.name || us.description) && (
-                            <div className="text-sm">
-                              <span className="text-gray-500">Service Type:</span> {us.ServiceType?.name || us.description}
-                            </div>
-                          )}
+                          {(() => {
+                            const typeOptions = allServiceTypes.filter(
+                              (st) => Number(st.serviceId) === Number(us.serviceId) && st.isActive !== false
+                            );
+                            const current = typeOptions.find((st) => Number(st.id) === Number(us.serviceTypeId));
+                            return (
+                              <div className="flex items-center gap-2 text-sm mt-2">
+                                <span className="text-gray-500 shrink-0">Service Type:</span>
+                                {typeOptions.length === 0 ? (
+                                  <span className="text-gray-400">
+                                    {serviceTypesResponse ? 'No active types for this service' : 'Loading…'}
+                                  </span>
+                                ) : (
+                                  <Select
+                                    value={current ? String(current.id) : ''}
+                                    disabled={serviceTypeMutation.isPending}
+                                    onValueChange={(value) =>
+                                      serviceTypeMutation.mutate({ userServiceId: us.id, serviceTypeId: Number(value) })
+                                    }
+                                  >
+                                    <SelectTrigger className="h-8">
+                                      <SelectValue
+                                        placeholder={us.serviceTypeId ? 'Type no longer available — choose one' : 'Not set — choose a type'}
+                                      />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {typeOptions.map((st) => (
+                                        <SelectItem key={st.id} value={String(st.id)}>{st.name}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              </div>
+                            );
+                          })()}
                           {us.rejectionReason && (
                             <div className="text-xs text-red-500 mt-1">Rejection reason: {us.rejectionReason}</div>
                           )}

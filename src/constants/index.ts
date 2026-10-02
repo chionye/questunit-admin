@@ -21,6 +21,7 @@ import {
   Image,
   Mail,
   RotateCw,
+  FileText,
 } from "lucide-react";
 
 export const navItems = [
@@ -81,5 +82,23 @@ export const statCards = [
     label: "Active Tools",
     icon: Wrench,
     color: "bg-emerald-500",
+  },
+  {
+    key: "newRequests",
+    label: "New Requests (30d)",
+    icon: FileText,
+    color: "bg-sky-500",
+  },
+  {
+    key: "activeRequests",
+    label: "Active Orders",
+    icon: ListChecks,
+    color: "bg-orange-500",
+  },
+  {
+    key: "revenue",
+    label: "Revenue (completed)",
+    icon: CircleDollarSign,
+    color: "bg-green-600",
   },
 ] as const;

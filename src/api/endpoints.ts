@@ -69,6 +69,8 @@ export const renderersApi = {
     api.post<ApiResponse<Renderer>>(`/admin/renderers/${userId}/reject`, data),
   updateUserServiceStatus: (userServiceId: string | number, data: { approvalStatus: 'approved' | 'rejected'; reason?: string }) =>
     api.patch<ApiResponse<unknown>>(`/admin/user-services/${userServiceId}/status`, data),
+  updateUserServiceType: (userServiceId: string | number, serviceTypeId: number) =>
+    api.patch<ApiResponse<unknown>>(`/admin/user-services/${userServiceId}/service-type`, { serviceTypeId }),
 };
 
 // Requesters

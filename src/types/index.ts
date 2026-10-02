@@ -34,6 +34,15 @@ export interface DashboardCounts {
   pendingRenderers: number;
   activeServices: number;
   activeTools: number;
+  newRequests: number;
+  activeRequests: number;
+  completedRequests: number;
+  revenue: number;
+}
+
+export interface MonthlyTrendPoint {
+  month: string;
+  value: number;
 }
 
 export interface RecentUser {
@@ -93,6 +102,10 @@ export interface RecentService {
 
 export interface DashboardOverview {
   counts: DashboardCounts;
+  monthlyTrends?: {
+    revenue?: MonthlyTrendPoint[];
+    requests?: MonthlyTrendPoint[];
+  };
   recentActivities: {
     users: RecentUser[];
     services: RecentService[];
@@ -110,6 +123,7 @@ export interface RendererUserService {
   Service?: {
     name?: string;
     category?: string;
+    commissionPercentage?: number | null;
   } | null;
   ServiceType?: {
     id?: number;
