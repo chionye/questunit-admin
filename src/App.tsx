@@ -20,6 +20,7 @@ import { ServiceTypeVideosPage } from '@/pages/ServiceTypeVideos';
 import { UserReportsPage } from '@/pages/UserReports';
 import { TasksPage } from '@/pages/Tasks';
 import { VerificationCallsPage } from '@/pages/VerificationCalls';
+import { RequestActivitiesPage } from '@/pages/RequestActivities';
 import { RecycleBinPage } from '@/pages/RecycleBin';
 import { MediaLibraryPage } from '@/pages/MediaLibrary';
 import { EmailsPage } from '@/pages/Emails';
@@ -59,6 +60,7 @@ function App() {
             <Route path="/user-reports" element={<UserReportsPage />} />
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/verification-calls" element={<VerificationCallsPage />} />
+            <Route path="/requests" element={<RequestActivitiesPage />} />
             <Route path="/recycle-bin" element={<RecycleBinPage />} />
             <Route path="/media-library" element={<MediaLibraryPage />} />
             <Route path="/emails" element={<EmailsPage />} />

@@ -7,6 +7,7 @@ import type {
   ApproveRendererRequest,
   RejectRendererRequest,
   RequesterUser,
+  RequestActivity,
   Service,
   ServiceType,
   Tool,
@@ -203,17 +204,32 @@ export const serviceTypeVideosApi = {
 };
 
 // Verification Calls
-export const verificationCallsApi = {
-  getAll: (params?: { page?: number; limit?: number; status?: string }) => {
+// Service requests made from the request app
+export const requestsApi = {
+  getAll: (params?: { page?: number; limit?: number; status?: string; search?: string }) => {
     const p: Record<string, string> = {};
     if (params?.page) p.page = String(params.page);
     if (params?.limit) p.limit = String(params.limit);
     if (params?.status) p.status = params.status;
+    if (params?.search) p.search = params.search;
+    const query = new URLSearchParams(p).toString();
+    return api.get<ApiResponse<RequestActivity[]>>(`/admin/requests${query ? `?${query}` : ''}`);
+  },
+};
+
+export const verificationCallsApi = {
+  getAll: (params?: { page?: number; limit?: number; status?: string; view?: string }) => {
+    const p: Record<string, string> = {};
+    if (params?.page) p.page = String(params.page);
+    if (params?.limit) p.limit = String(params.limit);
+    if (params?.status) p.status = params.status;
+    if (params?.view) p.view = params.view;
     const query = new URLSearchParams(p).toString();
     return api.get<ApiResponse<any[]>>(`/admin/verification-calls${query ? `?${query}` : ''}`);
   },
-  updateStatus: (userId: string, status: string) =>
-    api.put<ApiResponse<any>>(`/admin/verification-calls/${userId}/status`, { status }),
+  // approve: also approve a renderer still awaiting approval (completed calls only)
+  updateStatus: (userId: string, status: string, approve = false) =>
+    api.put<ApiResponse<any>>(`/admin/verification-calls/${userId}/status`, { status, approve }),
 };
 
 // Tasks

@@ -22,6 +22,7 @@ import {
   Mail,
   RotateCw,
   FileText,
+  Activity,
 } from "lucide-react";
 
 export const navItems = [
@@ -30,6 +31,7 @@ export const navItems = [
   { path: "/users", label: "All Users", icon: Users },
   { path: "/pending-requesters", label: "Pending Requesters", icon: UserPlus },
   { path: "/requesters", label: "Requesters", icon: UserCheck },
+  { path: "/requests", label: "Requests", icon: Activity },
   { path: "/services", label: "Services", icon: Box },
   { path: "/service-types", label: "Service Types & Pricing", icon: Grid3X3 },
   { path: "/service-commissions", label: "Commissions", icon: CircleDollarSign },

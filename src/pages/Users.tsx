@@ -184,6 +184,8 @@ export function UsersPage() {
                 <TableHead>Email / Phone</TableHead>
                 <TableHead>NIN</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Service</TableHead>
+                <TableHead>Service Type</TableHead>
                 <TableHead>Verification</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Joined</TableHead>
@@ -198,6 +200,13 @@ export function UsersPage() {
                   ? `${profile.firstName} ${profile.lastName ?? ''}`.trim()
                   : '—';
                 const ninDoc = user.Documents?.find((d) => d.type === 'nin');
+                const userServices = user.UserServices ?? [];
+                const serviceList = Array.from(
+                  new Set(userServices.map((us) => us.Service?.name).filter(Boolean))
+                );
+                const serviceTypeList = Array.from(
+                  new Set(userServices.map((us) => us.ServiceType?.name).filter(Boolean))
+                );
 
                 return (
                   <TableRow key={id}>
@@ -216,6 +225,12 @@ export function UsersPage() {
                       <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
                         {user.role}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-gray-600 text-sm">
+                      {serviceList.length > 0 ? serviceList.join(', ') : '—'}
+                    </TableCell>
+                    <TableCell className="text-gray-600 text-sm">
+                      {serviceTypeList.length > 0 ? serviceTypeList.join(', ') : '—'}
                     </TableCell>
                     <TableCell>
                       <VerificationLevelBadge
@@ -331,6 +346,27 @@ export function UsersPage() {
                   </div>
                 </div>
               </div>
+              {(selectedUser.UserServices?.length ?? 0) > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Services Offered</h4>
+                    <div className="space-y-2">
+                      {selectedUser.UserServices!.map((us) => (
+                        <div key={us.id} className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="default" className="text-xs">{us.Service?.name || 'Unknown service'}</Badge>
+                          {us.ServiceType?.name && (
+                            <Badge variant="secondary" className="text-xs">{us.ServiceType.name}</Badge>
+                          )}
+                          {us.approvalStatus && (
+                            <span className="text-xs text-gray-400">{us.approvalStatus}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
               {selectedUser.Documents && selectedUser.Documents.length > 0 && (
                 <>
                   <Separator />

@@ -16,13 +16,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 
-interface VerificationCallUser {
+export interface VerificationCallUser {
   id: number;
   email: string | null;
   phone: string | null;
   role: string;
   status: string;
   createdAt: string;
+  verificationCallStatus?: string | null;
+  // The renderer's setup checklist (what onboarding asks for)
+  setup?: { done: number; total: number; complete: boolean; missing: string[] } | null;
   UserProfile: {
     firstName: string | null;
     lastName: string | null;
@@ -30,6 +33,25 @@ interface VerificationCallUser {
     profilePhoto: string | null;
     verificationCallStatus: string | null;
   } | null;
+  UserServices?: {
+    id: number;
+    serviceTypeId: number | null;
+    requestedServiceTypeId: number | null;
+    Service?: { name?: string } | null;
+    ServiceType?: { id: number; name: string } | null;
+    RequestedServiceType?: { id: number; name: string } | null;
+  }[];
+}
+
+// Service type upgrades waiting on this call, e.g. "Car Washing: Basic → Deluxe".
+function getUpgradeRequests(user: VerificationCallUser): string[] {
+  return (user.UserServices ?? [])
+    .filter((us) => us.requestedServiceTypeId && us.RequestedServiceType)
+    .map((us) => {
+      const service = us.Service?.name ? `${us.Service.name}: ` : '';
+      const from = us.ServiceType?.name ?? 'None';
+      return `${service}${from} → ${us.RequestedServiceType!.name}`;
+    });
 }
 
 function TableSkeletonLoader() {
@@ -73,25 +95,61 @@ function StatusBadge({ status }: { status?: string }) {
 
 const PAGE_SIZE = 10;
 
+type CallView = 'upcoming' | 'completed' | 'cancelled';
+const VIEWS: { key: CallView; label: string; empty: string }[] = [
+  { key: 'upcoming', label: 'Upcoming', empty: 'No upcoming verification calls' },
+  { key: 'completed', label: 'Completed', empty: 'No completed verification calls yet' },
+  { key: 'cancelled', label: 'Cancelled', empty: 'No cancelled verification calls' },
+];
+
+// Shown in Lagos time whatever the admin's computer is set to.
+export function formatCallTime(iso?: string | null) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('en-NG', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'Africa/Lagos',
+  });
+}
+
+function SetupProgress({ setup }: { setup?: VerificationCallUser['setup'] }) {
+  if (!setup) return <span className="text-gray-400">—</span>;
+  return setup.complete ? (
+    <Badge variant="success">Complete</Badge>
+  ) : (
+    <div>
+      <Badge variant="warning">{setup.done} of {setup.total} done</Badge>
+      <div className="text-xs text-gray-500 mt-1">Missing: {setup.missing.join(', ')}</div>
+    </div>
+  );
+}
+
 export function VerificationCallsPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
+  const [view, setView] = useState<CallView>('upcoming');
   const [selectedUser, setSelectedUser] = useState<VerificationCallUser | null>(null);
   const [actionType, setActionType] = useState<'view' | 'complete' | 'cancel' | null>(null);
 
   const { data: response, isLoading, error } = useQuery({
-    queryKey: ['verification-calls', page],
-    queryFn: () => verificationCallsApi.getAll({ page, limit: PAGE_SIZE }),
+    queryKey: ['verification-calls', view, page],
+    queryFn: () => verificationCallsApi.getAll({ page, limit: PAGE_SIZE, view }),
   });
 
   const calls: VerificationCallUser[] = response ? (extractData(response) as VerificationCallUser[] ?? []) : [];
   const { totalCount, totalPages } = response ? extractPagination(response) : { totalCount: 0, totalPages: 1 };
 
   const completeMutation = useMutation({
-    mutationFn: (userId: string) => verificationCallsApi.updateStatus(userId, 'completed'),
-    onSuccess: () => {
-      toast.success('Verification call marked as completed');
+    mutationFn: ({ userId, approve }: { userId: string; approve: boolean }) =>
+      verificationCallsApi.updateStatus(userId, 'completed', approve),
+    onSuccess: (_res, { approve }) => {
+      toast.success(approve ? 'Call completed and renderer approved' : 'Verification call marked as completed');
       queryClient.invalidateQueries({ queryKey: ['verification-calls'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingRenderers'] });
       closeModal();
     },
     onError: () => toast.error('Failed to update verification call status'),
@@ -119,6 +177,20 @@ export function VerificationCallsPage() {
         subtitle="Review and manage scheduled verification calls for renderers"
       />
 
+      <div className="flex gap-1 mb-4" role="tablist">
+        {VIEWS.map((v) => (
+          <Button
+            key={v.key}
+            role="tab"
+            aria-selected={view === v.key}
+            variant={view === v.key ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => { setView(v.key); setPage(1); }}>
+            {v.label}
+          </Button>
+        ))}
+      </div>
+
       <Card className="overflow-hidden">
         {isLoading ? (
           <TableSkeletonLoader />
@@ -128,7 +200,7 @@ export function VerificationCallsPage() {
           </div>
         ) : calls.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-gray-400 text-lg">No verification calls scheduled</p>
+            <p className="text-gray-400 text-lg">{VIEWS.find((v) => v.key === view)?.empty}</p>
             <p className="text-gray-300 text-sm mt-1">Renderers who schedule a verification call will appear here</p>
           </div>
         ) : (
@@ -138,7 +210,10 @@ export function VerificationCallsPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email / Phone</TableHead>
-                  <TableHead>Scheduled Date</TableHead>
+                  <TableHead>Call Date &amp; Time</TableHead>
+                  <TableHead>Purpose</TableHead>
+                  <TableHead>Setup</TableHead>
+                  <TableHead>Account</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -159,19 +234,37 @@ export function VerificationCallsPage() {
                         <div className="text-xs text-gray-400">{call.phone || '—'}</div>
                       </TableCell>
                       <TableCell className="text-gray-600 text-sm">
-                        {profile?.verificationDate
-                          ? new Date(profile.verificationDate).toLocaleDateString('en-US', {
-                              weekday: 'short',
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            })
-                          : '—'}
+                        {formatCallTime(profile?.verificationDate)}
+                        {view === 'upcoming' && profile?.verificationDate && new Date(profile.verificationDate) < new Date() && (
+                          <div><Badge variant="danger">Overdue</Badge></div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {getUpgradeRequests(call).length > 0 ? (
+                          getUpgradeRequests(call).map((u) => (
+                            <div key={u}>
+                              <Badge variant="warning">Upgrade</Badge>{' '}
+                              <span className="text-gray-600">{u}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <span className="text-gray-400">Onboarding</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        <SetupProgress setup={call.setup} />
                       </TableCell>
                       <TableCell>
-                        <StatusBadge status={(call as any).verificationCallStatus} />
+                        {call.status === 'pending' ? (
+                          <Badge variant="warning">Awaiting approval</Badge>
+                        ) : call.status === 'active' ? (
+                          <Badge variant="success">Approved</Badge>
+                        ) : (
+                          <Badge variant="secondary">{call.status}</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={call.verificationCallStatus ?? undefined} />
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -241,6 +334,10 @@ export function VerificationCallsPage() {
                     ? new Date(selectedUser.UserProfile.verificationDate).toLocaleString()
                     : null
                 } />
+                <DetailRow
+                  label="Upgrade Request"
+                  value={getUpgradeRequests(selectedUser).join(', ') || null}
+                />
               </div>
               <Separator />
               <div className="flex gap-3">
@@ -263,20 +360,41 @@ export function VerificationCallsPage() {
             <DialogTitle>Mark Verification Call Completed</DialogTitle>
             <DialogDescription>
               Confirm that this verification call has been successfully completed.
+              {selectedUser && getUpgradeRequests(selectedUser).length > 0 && (
+                <> This will also apply the requested upgrade ({getUpgradeRequests(selectedUser).join(', ')}).</>
+              )}
             </DialogDescription>
           </DialogHeader>
+          {selectedUser?.status === 'pending' && selectedUser.setup && !selectedUser.setup.complete && (
+            <p className="text-sm text-amber-700 bg-amber-50 rounded-md p-3">
+              This renderer hasn't finished their setup yet (missing: {selectedUser.setup.missing.join(', ')}).
+              If you approve now, they still can't go online until it's done.
+            </p>
+          )}
           <DialogFooter>
             <Button variant="secondary" onClick={closeModal}>Cancel</Button>
             <Button
+              variant={selectedUser?.status === 'pending' ? 'outline' : 'default'}
               onClick={() => {
                 if (!selectedUser) return;
                 const userId = String(normalizeId(selectedUser as unknown as Record<string, unknown>));
-                completeMutation.mutate(userId);
+                completeMutation.mutate({ userId, approve: false });
               }}
               disabled={completeMutation.isPending}
             >
               {completeMutation.isPending ? 'Updating...' : 'Mark Completed'}
             </Button>
+            {selectedUser?.status === 'pending' && (
+              <Button
+                onClick={() => {
+                  const userId = String(normalizeId(selectedUser as unknown as Record<string, unknown>));
+                  completeMutation.mutate({ userId, approve: true });
+                }}
+                disabled={completeMutation.isPending}
+              >
+                Mark Completed &amp; Approve
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -288,6 +406,9 @@ export function VerificationCallsPage() {
             <DialogTitle>Cancel Verification Call</DialogTitle>
             <DialogDescription>
               Are you sure you want to cancel this verification call?
+              {selectedUser && getUpgradeRequests(selectedUser).length > 0 && (
+                <> The renderer's upgrade request will be dropped.</>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

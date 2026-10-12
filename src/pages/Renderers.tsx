@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatCallTime } from '@/pages/VerificationCalls';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Check, X, Eye, Search } from 'lucide-react';
@@ -234,6 +235,8 @@ export function RenderersPage() {
                 <TableHead>Service</TableHead>
                 <TableHead>Service Type</TableHead>
                 <TableHead>Commission Rate</TableHead>
+                <TableHead>Verification Call</TableHead>
+                <TableHead>Setup</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Applied</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -291,8 +294,30 @@ export function RenderersPage() {
                         ? commissionRates.map((rate) => `${rate}%`).join(', ')
                         : '—'}
                     </TableCell>
+                    <TableCell className="text-sm text-gray-600">
+                      {renderer.UserProfile?.verificationDate ? (
+                        <>
+                          <div>{formatCallTime(renderer.UserProfile.verificationDate)}</div>
+                          <div className="text-xs text-gray-400 capitalize">{renderer.verificationCallStatus || 'pending'}</div>
+                        </>
+                      ) : (
+                        <span className="text-gray-400">Not booked</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {renderer.setup ? (
+                        renderer.setup.complete ? (
+                          <Badge variant="success">Complete</Badge>
+                        ) : (
+                          <div>
+                            <Badge variant="warning">{renderer.setup.done} of {renderer.setup.total}</Badge>
+                            <div className="text-xs text-gray-500 mt-1">Missing: {renderer.setup.missing.join(', ')}</div>
+                          </div>
+                        )
+                      ) : '—'}
+                    </TableCell>
                     <TableCell>
-                      <Badge variant="warning">{renderer.status || 'pending'}</Badge>
+                      <Badge variant={renderer.status === 'active' ? 'success' : 'warning'}>{renderer.status || 'pending'}</Badge>
                     </TableCell>
                     <TableCell className="text-gray-400">
                       {renderer.createdAt ? new Date(renderer.createdAt).toLocaleDateString() : '—'}
@@ -345,6 +370,15 @@ export function RenderersPage() {
                 <DetailRow label="Email" value={selectedRenderer.email} />
                 <DetailRow label="Phone" value={selectedRenderer.phone} />
                 <DetailRow label="Status" value={selectedRenderer.status} />
+                <DetailRow
+                  label="Date of Birth"
+                  value={selectedRenderer.UserProfile?.dob ? new Date(selectedRenderer.UserProfile.dob).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : null}
+                />
+                <DetailRow label="Gender" value={selectedRenderer.UserProfile?.gender ? selectedRenderer.UserProfile.gender.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()) : null} />
+                <DetailRow label="Address" value={selectedRenderer.UserProfile?.address} />
+                <DetailRow label="City" value={selectedRenderer.UserProfile?.city} />
+                <DetailRow label="State" value={selectedRenderer.UserProfile?.state} />
+                <DetailRow label="Country" value={selectedRenderer.UserProfile?.country} />
                 <DetailRow label="Experience" value={selectedRenderer.UserProfile?.experience} />
                 <DetailRow label="Hourly Rate ($)" value={selectedRenderer.UserProfile?.hourlyRate != null ? String(selectedRenderer.UserProfile.hourlyRate) : null} />
               </div>
@@ -526,6 +560,12 @@ export function RenderersPage() {
             <DialogTitle>Approve Renderer</DialogTitle>
             <DialogDescription>Set rate and add approval notes</DialogDescription>
           </DialogHeader>
+          {selectedRenderer?.setup && !selectedRenderer.setup.complete && (
+            <p className="text-sm text-amber-700 bg-amber-50 rounded-md p-3">
+              This renderer hasn't finished their setup yet (missing: {selectedRenderer.setup.missing.join(', ')}).
+              If you approve now, they still can't go online until it's done.
+            </p>
+          )}
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Hourly Rate ($)</Label>

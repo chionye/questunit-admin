@@ -88,7 +88,49 @@ export interface RequesterUser {
   } | null;
   Documents?: RequesterDocument[];
   Wallet?: { balance: number; taskBalance?: number } | null;
+  UserServices?: RendererUserService[];
   serviceCounts?: { completed: number; cancelled: number; pending: number };
+}
+
+// Service requests made from the request app
+export interface RequestActivityUser {
+  id: number;
+  email: string | null;
+  phone: string | null;
+  UserProfile: { firstName: string | null; lastName: string | null } | null;
+}
+
+export interface RequestActivity {
+  id: number;
+  status: string;
+  address: string;
+  addressText: string | null;
+  amount: string | number;
+  finalPrice: string | number | null;
+  currency: string;
+  paymentStatus: string;
+  scheduledAt: string | null;
+  createdAt: string;
+  matchedAt: string | null;
+  acceptedAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  updatedAt: string;
+  cancelledBy: string | null;
+  cancellationReason: string | null;
+  specialInstructions: string | null;
+  requester: RequestActivityUser | null;
+  renderer: RequestActivityUser | null;
+  Service: { id: number; name: string } | null;
+  serviceType: { id: number; name: string } | null;
+}
+
+export interface RequestStatusCounts {
+  all: number;
+  ongoing: number;
+  completed: number;
+  cancelled: number;
+  expired: number;
 }
 
 export interface RecentService {
@@ -147,11 +189,21 @@ export interface Renderer {
     hourlyRate?: number | null;
     skills?: string[] | null;
     experience?: string | null;
+    dob?: string | null;
+    gender?: string | null;
+    address?: string | null;
+    city?: string | null;
+    state?: string | null;
+    country?: string | null;
+    verificationDate?: string | null;
   } | null;
   UserServices?: RendererUserService[];
   Documents?: RequesterDocument[];
   serviceCounts?: { completed: number; cancelled: number; pending: number };
   [key: string]: unknown;
+  verificationCallStatus?: string | null;
+  // The renderer's setup checklist (what onboarding asks for)
+  setup?: { done: number; total: number; complete: boolean; missing: string[] } | null;
 }
 
 export interface ApproveRendererRequest {
