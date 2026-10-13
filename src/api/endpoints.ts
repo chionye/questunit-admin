@@ -346,6 +346,14 @@ export const emailsApi = {
 };
 
 // App Versions
+export type PushAudience = 'all' | 'requesters' | 'renderers';
+export interface PushResult { audience: PushAudience; users: number; withApp: number; sent: number; failed: number }
+
+export const pushNotificationsApi = {
+  send: (data: { audience: PushAudience; title: string; body: string }) =>
+    api.post<ApiResponse<PushResult>>('/admin/notifications/push', data),
+};
+
 export const appVersionsApi = {
   getAll: () =>
     api.get<ApiResponse<{ data: AppVersion[]; total: number; page: number; totalPages: number }>>('/admin/app-versions'),

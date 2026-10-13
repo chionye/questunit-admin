@@ -24,6 +24,7 @@ import { RequestActivitiesPage } from '@/pages/RequestActivities';
 import { RecycleBinPage } from '@/pages/RecycleBin';
 import { MediaLibraryPage } from '@/pages/MediaLibrary';
 import { EmailsPage } from '@/pages/Emails';
+import { PushNotificationsPage } from '@/pages/PushNotifications';
 import { AppVersionsPage } from '@/pages/AppVersions';
 
 const queryClient = new QueryClient({
@@ -64,6 +65,7 @@ function App() {
             <Route path="/recycle-bin" element={<RecycleBinPage />} />
             <Route path="/media-library" element={<MediaLibraryPage />} />
             <Route path="/emails" element={<EmailsPage />} />
+            <Route path="/push-notifications" element={<PushNotificationsPage />} />
             <Route path="/app-versions" element={<AppVersionsPage />} />
           </Route>
         </Routes>

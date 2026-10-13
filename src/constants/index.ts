@@ -1,6 +1,7 @@
 /** @format */
 
 import {
+  BellRing,
   LayoutDashboard,
   Users,
   UserCheck,
@@ -44,6 +45,7 @@ export const navItems = [
   { path: "/user-reports", label: "User Reports", icon: Flag },
   { path: "/media-library", label: "Media Library", icon: Image },
   { path: "/emails", label: "Send Emails", icon: Mail },
+  { path: "/push-notifications", label: "Push Notifications", icon: BellRing },
   { path: "/recycle-bin", label: "Recycle Bin", icon: Trash2 },
   { path: "/app-versions", label: "App Versions", icon: RotateCw },
 ] as const;
