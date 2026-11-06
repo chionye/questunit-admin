@@ -14,7 +14,8 @@ vi.mock('@/api/endpoints', () => ({
 vi.mock('react-hot-toast', () => ({ default: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/components/layout/Header', () => ({ Header: ({ title }: { title: string }) => <h1>{title}</h1> }));
 
-import { VerificationCallsPage, formatCallTime } from '@/pages/VerificationCalls';
+import { VerificationCallsPage } from '@/pages/VerificationCalls';
+import { formatCallTime } from '@/lib/format';
 
 // Rows shaped like the real backend response (checked against MariaDB).
 const pendingRenderer = {

@@ -1,5 +1,6 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from '@/lib/queryClient';
 import { Toaster } from 'react-hot-toast';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { LoginPage } from '@/pages/Login';
@@ -26,16 +27,7 @@ import { MediaLibraryPage } from '@/pages/MediaLibrary';
 import { EmailsPage } from '@/pages/Emails';
 import { PushNotificationsPage } from '@/pages/PushNotifications';
 import { AppVersionsPage } from '@/pages/AppVersions';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-      staleTime: 30_000,
-    },
-  },
-});
+import { BankTransfersPage } from '@/pages/BankTransfers';
 
 function App() {
   return (
@@ -67,7 +59,9 @@ function App() {
             <Route path="/emails" element={<EmailsPage />} />
             <Route path="/push-notifications" element={<PushNotificationsPage />} />
             <Route path="/app-versions" element={<AppVersionsPage />} />
+            <Route path="/bank-transfers" element={<BankTransfersPage />} />
           </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
       <Toaster

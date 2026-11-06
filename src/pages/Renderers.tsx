@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { formatCallTime } from '@/pages/VerificationCalls';
+import { formatCallTime } from '@/lib/format';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Check, X, Eye, Search } from 'lucide-react';
@@ -20,6 +20,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import type { Renderer, ApproveRendererRequest, RejectRendererRequest, ServiceType } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
+import { docLabel } from '@/lib/documents';
+
 
 function TableSkeletonLoader() {
   return (
@@ -74,7 +77,7 @@ export function RenderersPage() {
       setPage(1);
       closeModal();
     },
-    onError: () => toast.error('Failed to approve renderer'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to approve renderer')),
   });
 
   const rejectMutation = useMutation({
@@ -85,7 +88,7 @@ export function RenderersPage() {
       queryClient.invalidateQueries({ queryKey: ['pendingRenderers'] });
       closeModal();
     },
-    onError: () => toast.error('Failed to reject renderer'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to reject renderer')),
   });
 
   const userServiceMutation = useMutation({
@@ -97,7 +100,28 @@ export function RenderersPage() {
       setServiceRejectingId(null);
       setServiceRejectReason('');
     },
-    onError: () => toast.error('Failed to update service status'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update service status')),
+  });
+
+  // Review one document, e.g. one uploaded again after the renderer was approved.
+  const [docRejectingId, setDocRejectingId] = useState<number | null>(null);
+  const [docRejectReason, setDocRejectReason] = useState('');
+  const documentMutation = useMutation({
+    mutationFn: ({ documentId, status, reason }: { documentId: number; status: 'approved' | 'rejected'; reason?: string }) =>
+      renderersApi.updateDocumentStatus(documentId, { status, reason }),
+    onSuccess: (_data, { documentId, status, reason }) => {
+      toast.success(status === 'approved' ? 'Document approved' : 'Document rejected');
+      setSelectedRenderer((prev) => prev && {
+        ...prev,
+        Documents: prev.Documents?.map((d) =>
+          d.id === documentId ? { ...d, status, rejectionReason: status === 'rejected' ? reason ?? null : null } : d
+        ),
+      });
+      setDocRejectingId(null);
+      setDocRejectReason('');
+      queryClient.invalidateQueries({ queryKey: ['pendingRenderers'] });
+    },
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update document')),
   });
 
   const { data: serviceTypesResponse } = useQuery({
@@ -149,6 +173,10 @@ export function RenderersPage() {
     setHourlyRate('');
     setRejectReason('');
     setRejectNotes('');
+    setDocRejectingId(null);
+    setDocRejectReason('');
+    setServiceRejectingId(null);
+    setServiceRejectReason('');
   };
 
   const handleApprove = () => {
@@ -216,12 +244,12 @@ export function RenderersPage() {
           <TableSkeletonLoader />
         ) : error ? (
           <div className="p-8 text-center">
-            <p className="text-red-500">Failed to load pending renderers</p>
+            <p className="text-red-500">{apiErrorMessage(error, 'Failed to load renderers')}</p>
           </div>
         ) : renderers.length === 0 ? (
           <div className="p-12 text-center">
-<p className="text-gray-400 text-lg">{search ? 'No renderers match your search' : statusFilter === 'pending' ? 'No pending renderers' : 'No active renderers'}</p>
-          <p className="text-gray-300 text-sm mt-1">{search ? 'Try a different name, email or phone' : statusFilter === 'pending' ? 'All applications have been reviewed' : 'All actives have been processed'}</p>
+            <p className="text-gray-400 text-lg">{search ? 'No renderers match your search' : statusFilter === 'pending' ? 'No pending renderers' : 'No active renderers'}</p>
+            <p className="text-gray-300 text-sm mt-1">{search ? 'Try a different name, email or phone' : statusFilter === 'pending' ? 'All applications have been reviewed' : 'Approved renderers will show here'}</p>
           </div>
         ) : (
           <>
@@ -327,12 +355,16 @@ export function RenderersPage() {
                         <Button variant="ghost" size="icon" onClick={() => { setSelectedRenderer(renderer); setActionType('view'); }}>
                           <Eye size={16} />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-green-500 hover:text-green-600 hover:bg-green-50" onClick={() => { setSelectedRenderer(renderer); setActionType('approve'); }}>
-                          <Check size={16} />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => { setSelectedRenderer(renderer); setActionType('reject'); }}>
-                          <X size={16} />
-                        </Button>
+                        {renderer.status !== 'active' && (
+                          <>
+                            <Button variant="ghost" size="icon" title="Approve" className="text-green-500 hover:text-green-600 hover:bg-green-50" onClick={() => { setSelectedRenderer(renderer); setActionType('approve'); }}>
+                              <Check size={16} />
+                            </Button>
+                            <Button variant="ghost" size="icon" title="Reject" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => { setSelectedRenderer(renderer); setActionType('reject'); }}>
+                              <X size={16} />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -380,7 +412,7 @@ export function RenderersPage() {
                 <DetailRow label="State" value={selectedRenderer.UserProfile?.state} />
                 <DetailRow label="Country" value={selectedRenderer.UserProfile?.country} />
                 <DetailRow label="Experience" value={selectedRenderer.UserProfile?.experience} />
-                <DetailRow label="Hourly Rate ($)" value={selectedRenderer.UserProfile?.hourlyRate != null ? String(selectedRenderer.UserProfile.hourlyRate) : null} />
+                <DetailRow label="Hourly Rate (₦)" value={selectedRenderer.UserProfile?.hourlyRate != null ? String(selectedRenderer.UserProfile.hourlyRate) : null} />
               </div>
               {(selectedRenderer.UserServices?.length ?? 0) > 0 && (
                 <>
@@ -512,15 +544,59 @@ export function RenderersPage() {
                     <h4 className="text-sm font-semibold text-gray-700 mb-2">Documents</h4>
                     <div className="space-y-2">
                       {selectedRenderer.Documents.map((doc, idx) => (
-                        <div key={idx} className="border rounded-lg p-3 bg-gray-50">
-                          <div className="flex items-center justify-between mb-1">
-                            <Badge variant={doc.type === 'nin' ? 'default' : 'secondary'} className="text-xs">
-                              {doc.type === 'nin' ? 'NIN' : doc.type === 'guarantor' ? 'Guarantor' : doc.type.replace('_', ' ')}
-                            </Badge>
-                            <Badge variant={doc.status === 'approved' ? 'default' : doc.status === 'rejected' ? 'danger' : 'secondary'} className="text-xs">
-                              {doc.status}
-                            </Badge>
+                        <div key={doc.id ?? idx} className="border rounded-lg p-3 bg-gray-50">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <Badge variant="secondary" className="text-xs">{docLabel(doc.type)}</Badge>
+                            <div className="flex items-center gap-1">
+                              <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'danger' : 'warning'} className="text-xs">
+                                {doc.status}
+                              </Badge>
+                              {doc.id != null && doc.status !== 'approved' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  title="Approve document"
+                                  className="h-7 text-green-600 border-green-300"
+                                  disabled={documentMutation.isPending}
+                                  onClick={() => documentMutation.mutate({ documentId: doc.id!, status: 'approved' })}
+                                >
+                                  <Check size={14} />
+                                </Button>
+                              )}
+                              {doc.id != null && doc.status !== 'rejected' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  title="Reject document"
+                                  className="h-7 text-red-600 border-red-300"
+                                  disabled={documentMutation.isPending}
+                                  onClick={() => { setDocRejectingId(docRejectingId === doc.id ? null : doc.id!); setDocRejectReason(''); }}
+                                >
+                                  <X size={14} />
+                                </Button>
+                              )}
+                            </div>
                           </div>
+                          {doc.rejectionReason && doc.status === 'rejected' && (
+                            <div className="text-xs text-red-500 mb-1">Rejection reason: {doc.rejectionReason}</div>
+                          )}
+                          {docRejectingId === doc.id && (
+                            <div className="mb-2 flex gap-2">
+                              <Input
+                                placeholder="What should the renderer fix?"
+                                value={docRejectReason}
+                                onChange={(e) => setDocRejectReason(e.target.value)}
+                              />
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                disabled={documentMutation.isPending || !docRejectReason.trim()}
+                                onClick={() => documentMutation.mutate({ documentId: doc.id!, status: 'rejected', reason: docRejectReason.trim() })}
+                              >
+                                Reject
+                              </Button>
+                            </div>
+                          )}
                           {doc.type === 'guarantor' ? (
                             <div className="text-sm space-y-0.5">
                               <div><span className="text-gray-500">Name:</span> {doc.notes}</div>
@@ -543,11 +619,15 @@ export function RenderersPage() {
                   </div>
                 </>
               )}
-              <Separator className="my-4" />
-              <div className="flex gap-3">
-                <Button className="flex-1" onClick={() => setActionType('approve')}>Approve</Button>
-                <Button variant="destructive" className="flex-1" onClick={() => setActionType('reject')}>Reject</Button>
-              </div>
+              {selectedRenderer.status !== 'active' && (
+                <>
+                  <Separator className="my-4" />
+                  <div className="flex gap-3">
+                    <Button className="flex-1" onClick={() => setActionType('approve')}>Approve</Button>
+                    <Button variant="destructive" className="flex-1" onClick={() => setActionType('reject')}>Reject</Button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </DialogContent>
@@ -568,8 +648,8 @@ export function RenderersPage() {
           )}
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Hourly Rate ($)</Label>
-              <Input type="number" placeholder="30.00" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} />
+              <Label>Hourly Rate (₦)</Label>
+              <Input type="number" min="0" placeholder="Optional" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Notes</Label>

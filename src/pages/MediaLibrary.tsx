@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Search, Download, ExternalLink } from 'lucide-react';
+import { apiErrorMessage } from '@/lib/utils';
 
 interface MediaFile {
   name: string;
@@ -139,7 +140,8 @@ export function MediaLibraryPage() {
     queryFn: () => uploadsApi.getAll(),
   });
 
-  const allFiles: MediaFile[] = Array.isArray((response as any)?.data?.data) ? (response as any).data.data : [];
+  const payload = (response?.data as { data?: unknown } | undefined)?.data;
+  const allFiles: MediaFile[] = Array.isArray(payload) ? (payload as MediaFile[]) : [];
   const files = allFiles.filter((f) => {
     const matchesSearch = !search || f.name.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = !categoryFilter || f.category === categoryFilter;
@@ -188,7 +190,7 @@ export function MediaLibraryPage() {
           <GallerySkeletonLoader />
         ) : error ? (
           <div className="p-8 text-center">
-            <p className="text-red-500">Failed to load uploads</p>
+            <p className="text-red-500">{apiErrorMessage(error, 'Failed to load uploads')}</p>
           </div>
         ) : files.length === 0 ? (
           <div className="p-12 text-center">

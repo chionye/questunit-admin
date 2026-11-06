@@ -1,7 +1,8 @@
 /** @format */
 
 import { useState } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate, useSearchParams, Navigate } from "react-router-dom";
+import { safeNextPath } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { authApi } from "@/api/endpoints";
@@ -19,6 +20,9 @@ import {
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Back to the page that sent them here, e.g. a link from an email.
+  const nextPath = safeNextPath(searchParams.get("next"));
   const { isAuthenticated, setAuth } = useAuthStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,10 +38,16 @@ export function LoginPage() {
         toast.error("Login failed: no token received");
         return;
       }
+      // Only admin accounts can use the dashboard; anyone else would sign in
+      // to a page of "access denied" errors.
+      if (user?.role && user.role !== "admin") {
+        toast.error("This account doesn't have admin access");
+        return;
+      }
 
       setAuth(token, user);
       toast.success("Login successful");
-      navigate("/", { replace: true });
+      navigate(nextPath, { replace: true });
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { message?: string } } };
@@ -46,7 +56,7 @@ export function LoginPage() {
   });
 
   if (isAuthenticated) {
-    return <Navigate to='/' replace />;
+    return <Navigate to={nextPath} replace />;
   }
 
   const handleSubmit = (e: React.FormEvent) => {

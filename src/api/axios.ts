@@ -2,6 +2,7 @@
 
 import axios from "axios";
 import { useAuthStore } from "../stores/authStore";
+import { loginPath } from "../lib/utils";
 
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "https://api.questunit.com/api/v1";
@@ -29,9 +30,14 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // An expired or revoked session: sign out and go to the login page
+    // (but not for a failed sign-in itself, which shows its own message).
+    const isLoginCall = String(error.config?.url || "").includes("/auth/login");
+    if (error.response?.status === 401 && !isLoginCall) {
       useAuthStore.getState().logout();
-      window.location.href = "/";
+      if (window.location.pathname !== "/login") {
+        window.location.href = loginPath(window.location.pathname + window.location.search);
+      }
     }
     return Promise.reject(error);
   },

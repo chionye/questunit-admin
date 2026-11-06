@@ -34,6 +34,7 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { apiErrorMessage } from '@/lib/utils';
 
 const PAGE_SIZE = 10;
 
@@ -96,7 +97,7 @@ export function PendingPaymentsPage() {
   const requests: WithdrawalRequest[] = response
     ? ((extractData(response) as WithdrawalRequest[]) ?? [])
     : [];
-  const pagination = (response as any)?.data?.data?.pagination || {
+  const pagination = (response?.data?.data as { pagination?: { totalCount: number; totalPages: number } } | undefined)?.pagination || {
     totalCount: 0,
     totalPages: 1,
   };
@@ -110,7 +111,7 @@ export function PendingPaymentsPage() {
       setApproveTarget(null);
       setRejectTarget(null);
     },
-    onError: () => toast.error("Failed to process withdrawal"),
+    onError: (err) => toast.error(apiErrorMessage(err, "Failed to process withdrawal")),
   });
 
   const formatCurrency = (amount: number) =>
@@ -157,7 +158,7 @@ export function PendingPaymentsPage() {
           <TableSkeleton />
         ) : error ? (
           <div className="p-8 text-center">
-            <p className="text-red-500">Failed to load withdrawal requests</p>
+            <p className="text-red-500">{apiErrorMessage(error, 'Failed to load withdrawal requests')}</p>
           </div>
         ) : requests.length === 0 ? (
           <div className="p-12 text-center">

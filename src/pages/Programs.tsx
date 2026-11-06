@@ -27,6 +27,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import type { Program, CreateProgramRequest, ServiceType } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
 
 const emptyForm: CreateProgramRequest = { title: '', description: '', isActive: true, order: 0, serviceTypeId: undefined };
 
@@ -93,7 +94,7 @@ export function ProgramsPage() {
       queryClient.invalidateQueries({ queryKey: ['programs'] });
       closeModal();
     },
-    onError: () => toast.error('Failed to create program'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to create program')),
   });
 
   const updateMutation = useMutation({
@@ -104,7 +105,7 @@ export function ProgramsPage() {
       queryClient.invalidateQueries({ queryKey: ['programs'] });
       closeModal();
     },
-    onError: () => toast.error('Failed to update program'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update program')),
   });
 
   const deleteMutation = useMutation({
@@ -114,7 +115,7 @@ export function ProgramsPage() {
       queryClient.invalidateQueries({ queryKey: ['programs'] });
       setDeleteTarget(null);
     },
-    onError: () => toast.error('Failed to delete program'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to delete program')),
   });
 
   const closeModal = () => { setIsModalOpen(false); setEditing(null); setForm(emptyForm); };
@@ -153,7 +154,7 @@ export function ProgramsPage() {
         {isLoading ? (
           <TableSkeleton />
         ) : error ? (
-          <div className="p-8 text-center"><p className="text-red-500">Failed to load programs</p></div>
+          <div className="p-8 text-center"><p className="text-red-500">{apiErrorMessage(error, 'Failed to load programs')}</p></div>
         ) : programs.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-gray-400 text-lg">No programs yet</p>

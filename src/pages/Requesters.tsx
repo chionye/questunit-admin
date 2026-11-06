@@ -20,6 +20,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import type { RequesterUser } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
+import { ID_DOCUMENT_TYPES } from '@/lib/documents';
 
 function TableSkeletonLoader() {
   return (
@@ -105,7 +107,7 @@ export function RequestersPage() {
       queryClient.invalidateQueries({ queryKey: ['requesters'] });
       closeModal();
     },
-    onError: () => toast.error('Failed to update account status'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update account status')),
   });
 
   const editMutation = useMutation({
@@ -116,7 +118,7 @@ export function RequestersPage() {
       queryClient.invalidateQueries({ queryKey: ['requesters'] });
       closeModal();
     },
-    onError: () => toast.error('Failed to update profile'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update profile')),
   });
 
   const closeModal = () => {
@@ -141,7 +143,7 @@ export function RequestersPage() {
     statusMutation.mutate({ userId, status: 'suspended', reason });
   };
 
-  const nin = selectedUser?.Documents?.find((d) => d.type === 'nin');
+  const nin = selectedUser?.Documents?.find((d) => ID_DOCUMENT_TYPES.includes(d.type) && !!d.documentNumber);
 
   return (
     <div>
@@ -178,7 +180,7 @@ export function RequestersPage() {
           <TableSkeletonLoader />
         ) : error ? (
           <div className="p-8 text-center">
-            <p className="text-red-500">Failed to load requesters</p>
+            <p className="text-red-500">{apiErrorMessage(error, 'Failed to load requesters')}</p>
           </div>
         ) : requesters.length === 0 ? (
           <div className="p-12 text-center">
@@ -207,7 +209,7 @@ export function RequestersPage() {
                 const name = profile?.firstName
                   ? `${profile.firstName} ${profile.lastName ?? ''}`.trim()
                   : '—';
-                const ninDoc = requester.Documents?.find((d) => d.type === 'nin');
+                const ninDoc = requester.Documents?.find((d) => ID_DOCUMENT_TYPES.includes(d.type) && !!d.documentNumber);
 
                 return (
                   <TableRow key={id}>
@@ -262,7 +264,7 @@ export function RequestersPage() {
                                 lastName: requester.UserProfile?.lastName || '',
                                 email: requester.email || '',
                                 phone: requester.phone || '',
-                                dob: requester.UserProfile?.dob || '',
+                                dob: requester.UserProfile?.dob ? String(requester.UserProfile.dob).slice(0, 10) : '',
                                 gender: requester.UserProfile?.gender || '',
                                 city: requester.UserProfile?.city || '',
                                 state: requester.UserProfile?.state || '',
@@ -449,7 +451,13 @@ export function RequestersPage() {
               </div>
               <div className="space-y-2">
                 <Label>Gender</Label>
-                <Input value={editForm.gender} onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })} />
+                <select className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary" value={editForm.gender} onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}>
+                  <option value="">Not set</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="prefer_not_to_say">Prefer not to say</option>
+                  <option value="other">Other</option>
+                </select>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">

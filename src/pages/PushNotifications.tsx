@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { apiErrorMessage } from '@/lib/utils';
 
 const AUDIENCES: { key: PushAudience; label: string; hint: string }[] = [
   { key: 'all', label: 'Everyone', hint: 'Request app and Render app users' },
@@ -38,9 +39,9 @@ export function PushNotificationsPage() {
       setBody('');
       toast.success(`Sent to ${data?.sent ?? 0} device${data?.sent === 1 ? '' : 's'}`);
     },
-    onError: (err: any) => {
+    onError: (err) => {
       setConfirming(false);
-      toast.error(err?.response?.data?.message || 'Failed to send notification');
+      toast.error(apiErrorMessage(err, 'Failed to send notification'));
     },
   });
 

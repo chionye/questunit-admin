@@ -5,6 +5,7 @@ import { Eye } from 'lucide-react';
 import { userReportsApi } from '@/api/endpoints';
 import { extractData } from '@/hooks/useApiData';
 import { Header } from '@/components/layout/Header';
+import { Pagination } from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { UserReport } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
 
 const REASON_LABELS: Record<string, string> = {
   harassment: 'Harassment',
@@ -38,22 +40,31 @@ function userName(user?: UserReport['reporter']) {
   return user.phone ?? user.email ?? `User #${user.id}`;
 }
 
+const PAGE_SIZE = 20;
+
 export function UserReportsPage() {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [page, setPage] = useState(1);
   const [detailReport, setDetailReport] = useState<UserReport | null>(null);
   const [adminNotes, setAdminNotes] = useState('');
 
-  const { data: reportsRes, isLoading } = useQuery({
-    queryKey: ['user-reports', statusFilter],
+  const { data: reportsRes, isLoading, error } = useQuery({
+    queryKey: ['user-reports', statusFilter, page],
     queryFn: () =>
       userReportsApi.getAll({
-        limit: 100,
+        page,
+        limit: PAGE_SIZE,
         status: statusFilter === 'all' ? undefined : statusFilter,
       }),
+    placeholderData: (prev) => prev,
   });
 
   const reports: UserReport[] = reportsRes ? ((extractData(reportsRes) as unknown as UserReport[]) ?? []) : [];
+  // This endpoint reports its size as total/totalPages.
+  const paging = reportsRes?.data?.data as { total?: number; totalPages?: number } | undefined;
+  const totalCount = Number(paging?.total) || 0;
+  const totalPages = Number(paging?.totalPages) || 1;
 
   const updateMutation = useMutation({
     mutationFn: ({ id, status, notes }: { id: number; status: string; notes?: string }) =>
@@ -63,7 +74,7 @@ export function UserReportsPage() {
       queryClient.invalidateQueries({ queryKey: ['user-reports'] });
       setDetailReport(null);
     },
-    onError: () => toast.error('Failed to update report'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update report')),
   });
 
   const openDetail = (report: UserReport) => {
@@ -76,7 +87,7 @@ export function UserReportsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <Header
         title="User Reports"
         subtitle="Reports submitted by renderers against requesters"
@@ -85,7 +96,7 @@ export function UserReportsPage() {
       {/* Filter */}
       <div className="flex items-center gap-3">
         <span className="text-sm text-gray-500">Filter by status:</span>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
           <SelectTrigger className="w-44">
             <SelectValue />
           </SelectTrigger>
@@ -123,10 +134,16 @@ export function UserReportsPage() {
                   ))}
                 </TableRow>
               ))
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-12 text-red-500">
+                  {apiErrorMessage(error, 'Failed to load reports')}
+                </TableCell>
+              </TableRow>
             ) : reports.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-12 text-gray-400">
-                  No reports found
+                  {statusFilter === 'all' ? 'No reports yet' : `No ${statusFilter} reports`}
                 </TableCell>
               </TableRow>
             ) : (
@@ -180,6 +197,7 @@ export function UserReportsPage() {
             )}
           </TableBody>
         </Table>
+        <Pagination currentPage={page} totalPages={totalPages} totalCount={totalCount} pageSize={PAGE_SIZE} onPageChange={setPage} />
       </div>
 
       {/* Detail Modal */}

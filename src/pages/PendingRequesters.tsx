@@ -18,6 +18,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import type { RequesterUser } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
+import { ID_DOCUMENT_TYPES } from '@/lib/documents';
 
 function TableSkeletonLoader() {
   return (
@@ -86,7 +88,7 @@ export function PendingRequestersPage() {
       queryClient.invalidateQueries({ queryKey: ['requesters'] });
       closeModal();
     },
-    onError: () => toast.error('Failed to approve account'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to approve account')),
   });
 
   const closeModal = () => {
@@ -100,7 +102,7 @@ export function PendingRequestersPage() {
     approveMutation.mutate(userId);
   };
 
-  const nin = selectedUser?.Documents?.find((d) => d.type === 'nin');
+  const nin = selectedUser?.Documents?.find((d) => ID_DOCUMENT_TYPES.includes(d.type) && !!d.documentNumber);
 
   return (
     <div>
@@ -136,7 +138,7 @@ export function PendingRequestersPage() {
           <TableSkeletonLoader />
         ) : error ? (
           <div className="p-8 text-center">
-            <p className="text-red-500">Failed to load pending requesters</p>
+            <p className="text-red-500">{apiErrorMessage(error, 'Failed to load pending requesters')}</p>
           </div>
         ) : requesters.length === 0 ? (
           <div className="p-12 text-center">
@@ -164,7 +166,7 @@ export function PendingRequestersPage() {
                   const name = profile?.firstName
                     ? `${profile.firstName} ${profile.lastName ?? ''}`.trim()
                     : '—';
-                  const ninDoc = requester.Documents?.find((d) => d.type === 'nin');
+                  const ninDoc = requester.Documents?.find((d) => ID_DOCUMENT_TYPES.includes(d.type) && !!d.documentNumber);
 
                   return (
                     <TableRow key={id}>

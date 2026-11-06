@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ServiceTypeVideo, CreateServiceTypeVideoRequest, Service, ServiceType } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
 
 const emptyForm: CreateServiceTypeVideoRequest = { title: '', videoUrl: '', serviceId: null, serviceTypeIds: [], isActive: true };
 
@@ -51,19 +52,19 @@ export function ServiceTypeVideosPage() {
   const createMutation = useMutation({
     mutationFn: serviceTypeVideosApi.create,
     onSuccess: () => { toast.success('Video added'); queryClient.invalidateQueries({ queryKey: ['service-type-videos'] }); closeModal(); },
-    onError: () => toast.error('Failed to add video'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to add video')),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: CreateServiceTypeVideoRequest }) => serviceTypeVideosApi.update(id, data),
     onSuccess: () => { toast.success('Video updated'); queryClient.invalidateQueries({ queryKey: ['service-type-videos'] }); closeModal(); },
-    onError: () => toast.error('Failed to update video'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update video')),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => serviceTypeVideosApi.delete(id),
     onSuccess: () => { toast.success('Video deleted'); queryClient.invalidateQueries({ queryKey: ['service-type-videos'] }); setDeleteTarget(null); },
-    onError: () => toast.error('Failed to delete video'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to delete video')),
   });
 
   const closeModal = () => { setIsModalOpen(false); setEditing(null); setForm(emptyForm); };

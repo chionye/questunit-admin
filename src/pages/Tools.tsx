@@ -45,6 +45,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { Tool, CreateToolRequest, UpdateToolRequest, ServiceType } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
 
 const emptyForm: CreateToolRequest = {
   name: '',
@@ -118,7 +119,7 @@ export function ToolsPage() {
       queryClient.invalidateQueries({ queryKey: ['tools'] });
       closeModal();
     },
-    onError: () => toast.error('Failed to create tool'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to create tool')),
   });
 
   const updateMutation = useMutation({
@@ -129,7 +130,7 @@ export function ToolsPage() {
       queryClient.invalidateQueries({ queryKey: ['tools'] });
       closeModal();
     },
-    onError: () => toast.error('Failed to update tool'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update tool')),
   });
 
   const deleteMutation = useMutation({
@@ -139,7 +140,7 @@ export function ToolsPage() {
       queryClient.invalidateQueries({ queryKey: ['tools'] });
       setDeleteTarget(null);
     },
-    onError: () => toast.error('Failed to delete tool'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to delete tool')),
   });
 
   const closeModal = () => {
@@ -201,7 +202,7 @@ export function ToolsPage() {
           <ToolsTableSkeleton />
         ) : error ? (
           <div className="p-8 text-center">
-            <p className="text-red-500">Failed to load tools</p>
+            <p className="text-red-500">{apiErrorMessage(error, 'Failed to load tools')}</p>
           </div>
         ) : tools.length === 0 ? (
           <div className="p-12 text-center">

@@ -15,6 +15,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { apiErrorMessage } from '@/lib/utils';
+import { formatCallTime } from '@/lib/format';
 
 export interface VerificationCallUser {
   id: number;
@@ -102,20 +104,6 @@ const VIEWS: { key: CallView; label: string; empty: string }[] = [
   { key: 'cancelled', label: 'Cancelled', empty: 'No cancelled verification calls' },
 ];
 
-// Shown in Lagos time whatever the admin's computer is set to.
-export function formatCallTime(iso?: string | null) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString('en-NG', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZone: 'Africa/Lagos',
-  });
-}
-
 function SetupProgress({ setup }: { setup?: VerificationCallUser['setup'] }) {
   if (!setup) return <span className="text-gray-400">—</span>;
   return setup.complete ? (
@@ -152,7 +140,7 @@ export function VerificationCallsPage() {
       queryClient.invalidateQueries({ queryKey: ['pendingRenderers'] });
       closeModal();
     },
-    onError: () => toast.error('Failed to update verification call status'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update verification call status')),
   });
 
   const cancelMutation = useMutation({
@@ -162,7 +150,7 @@ export function VerificationCallsPage() {
       queryClient.invalidateQueries({ queryKey: ['verification-calls'] });
       closeModal();
     },
-    onError: () => toast.error('Failed to update verification call status'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update verification call status')),
   });
 
   const closeModal = () => {
@@ -196,7 +184,7 @@ export function VerificationCallsPage() {
           <TableSkeletonLoader />
         ) : error ? (
           <div className="p-8 text-center">
-            <p className="text-red-500">Failed to load verification calls</p>
+            <p className="text-red-500">{apiErrorMessage(error, 'Failed to load verification calls')}</p>
           </div>
         ) : calls.length === 0 ? (
           <div className="p-12 text-center">

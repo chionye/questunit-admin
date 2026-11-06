@@ -1,7 +1,9 @@
 /** @format */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { Eye, Search } from 'lucide-react';
 import { requestsApi } from '@/api/endpoints';
 import { extractData, extractPagination, normalizeId } from '@/hooks/useApiData';
@@ -17,6 +19,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import type { RequestActivity, RequestActivityUser, RequestStatusCounts } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
 
 function SkeletonLoader() {
   return (
@@ -107,7 +110,27 @@ export function RequestActivitiesPage() {
   const [searchInput, setSearchInput] = useState('');
   const search = useDebounce(searchInput);
   const [statusFilter, setStatusFilter] = useState('');
-  const [selected, setSelected] = useState<RequestActivity | null>(null);
+  const [opened, setOpened] = useState<RequestActivity | null>(null);
+
+  // The link in the new request email is /requests?id=123: open that request.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const linkedId = searchParams.get('id');
+  const { data: linkedResponse, error: linkedError, isFetched: linkedFetched } = useQuery({
+    queryKey: ['admin-request', linkedId],
+    queryFn: () => requestsApi.getAll({ id: linkedId ?? undefined, limit: 1 }),
+    enabled: !!linkedId,
+  });
+
+  const linkedRequest = linkedId && linkedResponse
+    ? (extractData(linkedResponse) as RequestActivity[] ?? [])[0] ?? null
+    : null;
+  const selected = opened ?? linkedRequest;
+
+  useEffect(() => {
+    if (!linkedId || !linkedFetched || linkedRequest) return;
+    toast.error(apiErrorMessage(linkedError, `Request #${linkedId} wasn't found`));
+    setSearchParams({}, { replace: true });
+  }, [linkedId, linkedFetched, linkedRequest, linkedError, setSearchParams]);
 
   const { data: response, isLoading, error, isFetching } = useQuery({
     queryKey: ['admin-requests', statusFilter, search, page],
@@ -193,7 +216,7 @@ export function RequestActivitiesPage() {
           <SkeletonLoader />
         ) : error ? (
           <div className="p-8 text-center">
-            <p className="text-red-500">Failed to load requests</p>
+            <p className="text-red-500">{apiErrorMessage(error, 'Failed to load requests')}</p>
           </div>
         ) : requests.length === 0 ? (
           <div className="p-12 text-center">
@@ -243,7 +266,7 @@ export function RequestActivitiesPage() {
                         <div className="text-[11px] text-gray-400 mt-1">{statusGroupLabel(request.status)}</div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => setSelected(request)}>
+                        <Button variant="ghost" size="icon" onClick={() => setOpened(request)}>
                           <Eye size={16} />
                         </Button>
                       </TableCell>
@@ -258,7 +281,11 @@ export function RequestActivitiesPage() {
       </Card>
 
       {/* Request details */}
-      <Dialog open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
+      <Dialog open={!!selected} onOpenChange={(open) => {
+        if (open) return;
+        setOpened(null);
+        if (linkedId) setSearchParams({}, { replace: true });
+      }}>
         <DialogContent className="sm:max-w-[560px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Request #{selected?.id}</DialogTitle>

@@ -48,6 +48,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import type { ServiceType, Service } from "@/types";
+import { apiErrorMessage } from '@/lib/utils';
 
 const emptyForm = {
   serviceId: "",
@@ -138,19 +139,19 @@ export function ServiceTypesPage() {
   const createMutation = useMutation({
     mutationFn: (data: FormData) => serviceTypesApi.create(data),
     onSuccess: () => { toast.success("Service type created"); queryClient.invalidateQueries({ queryKey: ["serviceTypes"] }); closeModal(); },
-    onError: () => toast.error("Failed to create service type"),
+    onError: (err) => toast.error(apiErrorMessage(err, "Failed to create service type")),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: FormData }) => serviceTypesApi.update(id, data),
     onSuccess: () => { toast.success("Service type updated"); queryClient.invalidateQueries({ queryKey: ["serviceTypes"] }); closeModal(); },
-    onError: () => toast.error("Failed to update service type"),
+    onError: (err) => toast.error(apiErrorMessage(err, "Failed to update service type")),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => serviceTypesApi.delete(id),
     onSuccess: () => { toast.success("Service type deleted"); queryClient.invalidateQueries({ queryKey: ["serviceTypes"] }); setDeleteTarget(null); },
-    onError: () => toast.error("Failed to delete service type"),
+    onError: (err) => toast.error(apiErrorMessage(err, "Failed to delete service type")),
   });
 
   const closeModal = () => {
@@ -227,7 +228,7 @@ export function ServiceTypesPage() {
         {isLoading ? (
           <TableSkeletonLoader />
         ) : error ? (
-          <div className='p-8 text-center'><p className='text-red-500'>Failed to load service types</p></div>
+          <div className='p-8 text-center'><p className='text-red-500'>{apiErrorMessage(error, 'Failed to load service types')}</p></div>
         ) : serviceTypes.length === 0 ? (
           <div className='p-12 text-center'>
             <p className='text-gray-400 text-lg'>No service types yet</p>

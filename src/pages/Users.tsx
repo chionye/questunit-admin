@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Separator } from '@/components/ui/separator';
 import type { RequesterUser } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
+import { docLabel, ID_DOCUMENT_TYPES, onboardingLabel } from '@/lib/documents';
 
 function SkeletonLoader() {
   return (
@@ -52,11 +54,7 @@ function StatusBadge({ status }: { status: string }) {
 function VerificationLevelBadge({ onboardingStep, isOnboardingComplete }: { onboardingStep?: string | null; isOnboardingComplete?: boolean }) {
   if (isOnboardingComplete) return <Badge variant="success">Completed</Badge>;
   if (!onboardingStep) return <Badge variant="secondary">Not started</Badge>;
-  const page1Steps = ['phone_verification', 'email_verification', 'profile_setup'];
-  const page2Steps = ['service_selection', 'document_upload', 'tool_upload', 'verification_call'];
-  if (page1Steps.includes(onboardingStep)) return <Badge variant="warning">Page 1</Badge>;
-  if (page2Steps.includes(onboardingStep)) return <Badge variant="default">Page 2</Badge>;
-  return <Badge variant="secondary">{onboardingStep}</Badge>;
+  return <Badge variant="warning">{onboardingLabel(onboardingStep)}</Badge>;
 }
 
 function DetailRow({ label, value }: { label: string; value?: string | null }) {
@@ -108,7 +106,7 @@ export function UsersPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       setDeleteTarget(null);
     },
-    onError: () => toast.error('Failed to delete user'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to delete user')),
   });
 
   const editMutation = useMutation({
@@ -120,7 +118,7 @@ export function UsersPage() {
       setEditingUser(false);
       setSelectedUser(null);
     },
-    onError: () => toast.error('Failed to update profile'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update profile')),
   });
 
   return (
@@ -160,6 +158,7 @@ export function UsersPage() {
           <option value="pending">Pending</option>
           <option value="active">Active</option>
           <option value="suspended">Suspended</option>
+          <option value="banned">Banned</option>
         </select>
       </div>
 
@@ -168,7 +167,7 @@ export function UsersPage() {
           <SkeletonLoader />
         ) : error ? (
           <div className="p-8 text-center">
-            <p className="text-red-500">Failed to load users</p>
+            <p className="text-red-500">{apiErrorMessage(error, 'Failed to load users')}</p>
           </div>
         ) : users.length === 0 ? (
           <div className="p-12 text-center">
@@ -199,7 +198,7 @@ export function UsersPage() {
                 const name = profile?.firstName
                   ? `${profile.firstName} ${profile.lastName ?? ''}`.trim()
                   : '—';
-                const ninDoc = user.Documents?.find((d) => d.type === 'nin');
+                const ninDoc = user.Documents?.find((d) => ID_DOCUMENT_TYPES.includes(d.type) && d.documentNumber);
                 const userServices = user.UserServices ?? [];
                 const serviceList = Array.from(
                   new Set(userServices.map((us) => us.Service?.name).filter(Boolean))
@@ -264,7 +263,7 @@ export function UsersPage() {
                               lastName: user.UserProfile?.lastName || '',
                               email: user.email || '',
                               phone: user.phone || '',
-                              dob: user.UserProfile?.dob || '',
+                              dob: user.UserProfile?.dob ? String(user.UserProfile.dob).slice(0, 10) : '',
                               gender: user.UserProfile?.gender || '',
                               city: user.UserProfile?.city || '',
                               state: user.UserProfile?.state || '',
@@ -322,7 +321,7 @@ export function UsersPage() {
                 <DetailRow label="Phone" value={selectedUser.phone} />
                 <DetailRow label="Role" value={selectedUser.role} />
                 <DetailRow label="Status" value={selectedUser.status} />
-                <DetailRow label="Date of Birth" value={selectedUser.UserProfile?.dob} />
+                <DetailRow label="Date of Birth" value={selectedUser.UserProfile?.dob ? new Date(selectedUser.UserProfile.dob).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : null} />
                 <DetailRow label="Gender" value={selectedUser.UserProfile?.gender} />
                 <DetailRow label="City" value={selectedUser.UserProfile?.city} />
                 <DetailRow label="State" value={selectedUser.UserProfile?.state} />
@@ -374,12 +373,12 @@ export function UsersPage() {
                     <h4 className="text-sm font-semibold text-gray-700 mb-2">Documents</h4>
                     <div className="space-y-2">
                       {selectedUser.Documents.map((doc, idx) => (
-                        <div key={idx} className="border rounded-lg p-3 bg-gray-50">
+                        <div key={doc.id ?? idx} className="border rounded-lg p-3 bg-gray-50">
                           <div className="flex items-center justify-between mb-1">
-                            <Badge variant={doc.type === 'nin' ? 'default' : 'secondary'} className="text-xs">
-                              {doc.type === 'nin' ? 'NIN' : doc.type === 'guarantor' ? 'Guarantor' : doc.type.replace('_', ' ')}
+                            <Badge variant="secondary" className="text-xs">
+                              {docLabel(doc.type)}
                             </Badge>
-                            <Badge variant={doc.status === 'approved' ? 'default' : doc.status === 'rejected' ? 'danger' : 'secondary'} className="text-xs">
+                            <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'danger' : 'warning'} className="text-xs">
                               {doc.status}
                             </Badge>
                           </div>
@@ -416,7 +415,7 @@ export function UsersPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete User</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this user account? This action cannot be undone.
+              This moves the account to the Recycle Bin and signs them out of the apps. You can restore it from there.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -466,11 +465,21 @@ export function UsersPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Role</Label>
-                <Input value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })} />
+                <select className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary" value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
+                  <option value="requester">Requester</option>
+                  <option value="renderer">Renderer</option>
+                  <option value="admin">Admin</option>
+                </select>
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Input value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} />
+                <select className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary" value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}>
+                  <option value="pending">Pending</option>
+                  <option value="active">Active</option>
+                  <option value="suspended">Suspended</option>
+                  <option value="deactivated">Deactivated</option>
+                  <option value="banned">Banned</option>
+                </select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -480,7 +489,13 @@ export function UsersPage() {
               </div>
               <div className="space-y-2">
                 <Label>Gender</Label>
-                <Input value={editForm.gender} onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })} />
+                <select className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary" value={editForm.gender} onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}>
+                  <option value="">Not set</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="prefer_not_to_say">Prefer not to say</option>
+                  <option value="other">Other</option>
+                </select>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">

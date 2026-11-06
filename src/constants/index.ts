@@ -24,6 +24,7 @@ import {
   RotateCw,
   FileText,
   Activity,
+  Landmark,
 } from "lucide-react";
 
 export const navItems = [
@@ -37,6 +38,7 @@ export const navItems = [
   { path: "/service-types", label: "Service Types & Pricing", icon: Grid3X3 },
   { path: "/service-commissions", label: "Commissions", icon: CircleDollarSign },
   { path: "/pending-payments", label: "Pending Payments", icon: Wallet },
+  { path: "/bank-transfers", label: "Bank Transfers", icon: Landmark },
   { path: "/tools", label: "Tools", icon: Wrench },
   { path: "/programs", label: "Programs", icon: BookOpen },
   { path: "/service-type-videos", label: "Service Videos", icon: Video },

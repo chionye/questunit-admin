@@ -59,11 +59,13 @@ export interface RecentUser {
 }
 
 export interface RequesterDocument {
+  id?: number;
   type: string;
   documentNumber: string | null;
   status: string;
   url: string;
   notes?: string | null;
+  rejectionReason?: string | null;
   createdAt: string;
 }
 
@@ -576,9 +578,13 @@ export interface BulkSendResult {
 }
 
 // App version types
+export type AppTarget = 'renderer' | 'request';
+
 export interface AppVersion {
   id: number;
   platform: 'ios' | 'android';
+  /** null means the row applies to both apps */
+  app: AppTarget | null;
   version: string;
   minimumVersion: string;
   buildNumber?: string | null;
@@ -590,6 +596,7 @@ export interface AppVersion {
 }
 
 export interface CreateAppVersionRequest {
+  app?: AppTarget | 'both';
   platform: 'ios' | 'android';
   version: string;
   minimumVersion?: string;
@@ -600,6 +607,7 @@ export interface CreateAppVersionRequest {
 }
 
 export interface UpdateAppVersionRequest {
+  app?: AppTarget | 'both';
   platform?: 'ios' | 'android';
   version?: string;
   minimumVersion?: string;
@@ -607,4 +615,26 @@ export interface UpdateAppVersionRequest {
   storeUrl?: string;
   releaseNotes?: string;
   isRequired?: boolean;
+}
+
+export type BankTransferStatus = 'credited' | 'missed' | 'no_wallet';
+
+export interface BankTransfer {
+  reference: string;
+  amount: number;
+  paidAt: string | null;
+  senderName: string | null;
+  senderBank: string | null;
+  receiverAccountNumber: string | null;
+  customerEmail: string | null;
+  user: { id: number; name: string | null; email: string; phone: string | null } | null;
+  status: BankTransferStatus;
+}
+
+export interface CreditBankTransferResult {
+  status: 'credited' | 'already_credited';
+  reference: string;
+  walletId?: number;
+  amount?: number;
+  commissionPaid?: number;
 }

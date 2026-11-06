@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import type { DashboardOverview } from "@/types";
 import { statCards } from "@/constants";
 import { DashboardSkeletonLoader } from "@/components/skeletons/DashboardSkeletonLoader";
+import { apiErrorMessage } from "@/lib/utils";
 
 const format = new Intl.NumberFormat("en-NG", {
   maximumFractionDigits: 0,
@@ -43,7 +44,7 @@ export function DashboardPage() {
         <DashboardSkeletonLoader />
       ) : error ? (
         <Card className='p-8 text-center'>
-          <p className='text-red-500'>Failed to load dashboard data</p>
+          <p className='text-red-500'>{apiErrorMessage(error, "Failed to load dashboard data")}</p>
           <p className='text-gray-400 text-sm mt-1'>
             Please check your connection and try again
           </p>
@@ -138,9 +139,10 @@ export function DashboardPage() {
                   </h2>
                   <div className='divide-y divide-gray-100'>
                     {recentUsers.map((user) => {
-                      const name = user.UserProfile
-                        ? `${user.UserProfile.firstName} ${user.UserProfile.lastName}`.trim()
-                        : user.email;
+                      const name =
+                        `${user.UserProfile?.firstName ?? ""} ${user.UserProfile?.lastName ?? ""}`.trim() ||
+                        user.email ||
+                        `User #${user.id}`;
 
                       return (
                         <div
@@ -151,7 +153,7 @@ export function DashboardPage() {
                               {name}
                             </p>
                             <p className='text-xs text-gray-400 mt-0.5'>
-                              {user.email} &middot;{" "}
+                              {user.email || "No email"} &middot;{" "}
                               {new Date(user.createdAt).toLocaleDateString()}
                             </p>
                           </div>

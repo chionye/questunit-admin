@@ -18,6 +18,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { RequesterUser } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
 
 function SkeletonLoader() {
   return (
@@ -67,7 +68,7 @@ export function RecycleBinPage() {
       queryClient.invalidateQueries({ queryKey: ['deleted-users'] });
       setConfirmAction(null);
     },
-    onError: () => toast.error('Failed to restore user'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to restore user')),
   });
 
   const restoreAllMutation = useMutation({
@@ -77,7 +78,7 @@ export function RecycleBinPage() {
       queryClient.invalidateQueries({ queryKey: ['deleted-users'] });
       setConfirmAction(null);
     },
-    onError: () => toast.error('Failed to restore users'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to restore users')),
   });
 
   const permanentDeleteMutation = useMutation({
@@ -87,17 +88,18 @@ export function RecycleBinPage() {
       queryClient.invalidateQueries({ queryKey: ['deleted-users'] });
       setConfirmAction(null);
     },
-    onError: () => toast.error('Failed to permanently delete user'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to permanently delete user')),
   });
 
   const permanentDeleteAllMutation = useMutation({
     mutationFn: () => usersApi.permanentDeleteAll(),
-    onSuccess: () => {
-      toast.success('All deleted users permanently removed');
+    onSuccess: (res) => {
+      // The server says how many were erased and how many were kept back.
+      toast.success((res?.data as { message?: string } | undefined)?.message || 'Deleted users permanently removed');
       queryClient.invalidateQueries({ queryKey: ['deleted-users'] });
       setConfirmAction(null);
     },
-    onError: () => toast.error('Failed to permanently delete users'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to permanently delete users')),
   });
 
   const handleConfirm = () => {
@@ -194,7 +196,7 @@ export function RecycleBinPage() {
           <SkeletonLoader />
         ) : error ? (
           <div className="p-8 text-center">
-            <p className="text-red-500">Failed to load deleted users</p>
+            <p className="text-red-500">{apiErrorMessage(error, 'Failed to load deleted users')}</p>
           </div>
         ) : users.length === 0 ? (
           <div className="p-12 text-center">
@@ -220,7 +222,7 @@ export function RecycleBinPage() {
                 const name = profile?.firstName
                   ? `${profile.firstName} ${profile.lastName ?? ''}`.trim()
                   : '—';
-                const deletedAt = (user as any).deletedAt || null;
+                const deletedAt = (user as RequesterUser & { deletedAt?: string | null }).deletedAt || null;
 
                 return (
                   <TableRow key={id}>

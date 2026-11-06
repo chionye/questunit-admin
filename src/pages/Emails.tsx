@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import type { AxiosResponse } from "axios";
 import { Send, Mail, Users, User } from "lucide-react";
 import { emailsApi } from "@/api/endpoints";
-import { extractData } from "@/hooks/useApiData";
+import { extractData, extractPagination } from "@/hooks/useApiData";
 import { Header } from "@/components/layout/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -100,14 +100,9 @@ export function EmailsPage() {
     ? ((extractData(response) as EmailRecipient[]) ?? [])
     : [];
 
-  const totalCount =
-    (response as any)?.data?.data?.totalCount ??
-    (response as any)?.data?.totalCount ??
-    0;
-  const totalPages =
-    (response as any)?.data?.data?.totalPages ??
-    (response as any)?.data?.totalPages ??
-    1;
+  const { totalCount, totalPages } = response
+    ? extractPagination(response)
+    : { totalCount: 0, totalPages: 1 };
 
   const sendMutation = useMutation<
     AxiosResponse<ApiResponse<SendEmailResult | BulkSendResult>>,

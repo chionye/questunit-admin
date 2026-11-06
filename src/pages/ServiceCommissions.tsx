@@ -17,6 +17,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import type { Service } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
 
 function TableSkeletonLoader() {
   return (
@@ -58,7 +59,7 @@ export function ServiceCommissionsPage() {
       queryClient.invalidateQueries({ queryKey: ['services'] });
       setEditingService(null);
     },
-    onError: () => toast.error('Failed to update commission'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update commission')),
   });
 
   const openEdit = (service: Service) => {
@@ -92,7 +93,7 @@ export function ServiceCommissionsPage() {
         {isLoading ? (
           <TableSkeletonLoader />
         ) : error ? (
-          <div className='p-8 text-center'><p className='text-red-500'>Failed to load services</p></div>
+          <div className='p-8 text-center'><p className='text-red-500'>{apiErrorMessage(error, 'Failed to load services')}</p></div>
         ) : services.length === 0 ? (
           <div className='p-12 text-center'>
             <p className='text-gray-400 text-lg'>No services found</p>

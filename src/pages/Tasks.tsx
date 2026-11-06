@@ -45,6 +45,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { Task, CreateTaskRequest, UpdateTaskRequest } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
 
 const emptyForm = {
   title: '',
@@ -111,7 +112,7 @@ export function TasksPage() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       closeModal();
     },
-    onError: () => toast.error('Failed to create task'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to create task')),
   });
 
   const updateMutation = useMutation({
@@ -122,7 +123,7 @@ export function TasksPage() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       closeModal();
     },
-    onError: () => toast.error('Failed to update task'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update task')),
   });
 
   const deleteMutation = useMutation({
@@ -132,7 +133,7 @@ export function TasksPage() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       setDeleteTarget(null);
     },
-    onError: () => toast.error('Failed to delete task'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to delete task')),
   });
 
   const closeModal = () => {
@@ -189,9 +190,9 @@ export function TasksPage() {
     }
     const payload = buildPayload();
     if (editingTask) {
-      updateMutation.mutate({ id: editingTask.id, data: payload as any });
+      updateMutation.mutate({ id: editingTask.id, data: payload as UpdateTaskRequest | FormData });
     } else {
-      createMutation.mutate(payload as any);
+      createMutation.mutate(payload as CreateTaskRequest | FormData);
     }
   };
 
@@ -213,7 +214,7 @@ export function TasksPage() {
           {isLoading ? (
             <TasksTableSkeleton />
           ) : error ? (
-            <div className="p-6 text-center text-muted-foreground">Failed to load tasks</div>
+            <div className="p-6 text-center text-muted-foreground">{apiErrorMessage(error, 'Failed to load tasks')}</div>
           ) : tasks.length === 0 ? (
             <div className="p-6 text-center text-muted-foreground">No tasks found</div>
           ) : (

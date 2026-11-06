@@ -39,6 +39,8 @@ import type {
   AppVersion,
   CreateAppVersionRequest,
   UpdateAppVersionRequest,
+  BankTransfer,
+  CreditBankTransferResult,
 } from '../types';
 
 // Auth
@@ -72,6 +74,8 @@ export const renderersApi = {
     api.patch<ApiResponse<unknown>>(`/admin/user-services/${userServiceId}/status`, data),
   updateUserServiceType: (userServiceId: string | number, serviceTypeId: number) =>
     api.patch<ApiResponse<unknown>>(`/admin/user-services/${userServiceId}/service-type`, { serviceTypeId }),
+  updateDocumentStatus: (documentId: number, data: { status: 'approved' | 'rejected'; reason?: string }) =>
+    api.patch<ApiResponse<unknown>>(`/admin/documents/${documentId}/status`, data),
 };
 
 // Requesters
@@ -206,12 +210,13 @@ export const serviceTypeVideosApi = {
 // Verification Calls
 // Service requests made from the request app
 export const requestsApi = {
-  getAll: (params?: { page?: number; limit?: number; status?: string; search?: string }) => {
+  getAll: (params?: { page?: number; limit?: number; status?: string; search?: string; id?: string }) => {
     const p: Record<string, string> = {};
     if (params?.page) p.page = String(params.page);
     if (params?.limit) p.limit = String(params.limit);
     if (params?.status) p.status = params.status;
     if (params?.search) p.search = params.search;
+    if (params?.id) p.id = params.id;
     const query = new URLSearchParams(p).toString();
     return api.get<ApiResponse<RequestActivity[]>>(`/admin/requests${query ? `?${query}` : ''}`);
   },
@@ -225,11 +230,11 @@ export const verificationCallsApi = {
     if (params?.status) p.status = params.status;
     if (params?.view) p.view = params.view;
     const query = new URLSearchParams(p).toString();
-    return api.get<ApiResponse<any[]>>(`/admin/verification-calls${query ? `?${query}` : ''}`);
+    return api.get<ApiResponse<unknown[]>>(`/admin/verification-calls${query ? `?${query}` : ''}`);
   },
   // approve: also approve a renderer still awaiting approval (completed calls only)
   updateStatus: (userId: string, status: string, approve = false) =>
-    api.put<ApiResponse<any>>(`/admin/verification-calls/${userId}/status`, { status, approve }),
+    api.put<ApiResponse<unknown>>(`/admin/verification-calls/${userId}/status`, { status, approve }),
 };
 
 // Tasks
@@ -315,10 +320,10 @@ export const adminApi = {
     if (params?.limit) p.limit = String(params.limit);
     if (params?.status) p.status = params.status;
     const query = new URLSearchParams(p).toString();
-    return api.get<ApiResponse<any[]>>(`/admin/withdrawals?${query}`);
+    return api.get<ApiResponse<unknown[]>>(`/admin/withdrawals?${query}`);
   },
   processWithdrawal: (id: number, data: { action: "approve" | "reject"; notes?: string }) =>
-    api.post<ApiResponse<any>>(`/admin/withdrawals/${id}/process`, data),
+    api.post<ApiResponse<unknown>>(`/admin/withdrawals/${id}/process`, data),
 };
 
 // Media Library
@@ -363,4 +368,11 @@ export const appVersionsApi = {
     api.put<ApiResponse<AppVersion>>(`/admin/app-versions/${id}`, data),
   delete: (id: number) =>
     api.delete<ApiResponse<void>>(`/admin/app-versions/${id}`),
+};
+
+export const bankTransfersApi = {
+  getAll: (days: number) =>
+    api.get<ApiResponse<{ days: number; transfers: BankTransfer[] }>>('/admin/bank-transfers', { params: { days } }),
+  credit: (reference: string) =>
+    api.post<ApiResponse<CreditBankTransferResult>>('/admin/bank-transfers/credit', { reference }),
 };

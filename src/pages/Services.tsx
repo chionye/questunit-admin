@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import type { Service, CreateServiceRequest, FormConfigField } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
 
 const emptyForm: CreateServiceRequest = {
   name: '',
@@ -84,19 +85,19 @@ export function ServicesPage() {
   const createMutation = useMutation({
     mutationFn: (data: FormData) => servicesApi.create(data),
     onSuccess: () => { toast.success('Service created'); setPage(1); queryClient.invalidateQueries({ queryKey: ['services'] }); closeModal(); },
-    onError: () => toast.error('Failed to create service'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to create service')),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: FormData }) => servicesApi.update(id, data),
     onSuccess: () => { toast.success('Service updated'); setPage(1); queryClient.invalidateQueries({ queryKey: ['services'] }); closeModal(); },
-    onError: () => toast.error('Failed to update service'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update service')),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => servicesApi.delete(id),
     onSuccess: () => { toast.success('Service deleted'); setPage(1); queryClient.invalidateQueries({ queryKey: ['services'] }); setDeleteTarget(null); },
-    onError: () => toast.error('Failed to delete service'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to delete service')),
   });
 
   const closeModal = () => { setIsModalOpen(false); setEditingService(null); setForm(emptyForm); setIconFile(null); setIconPreview(null); setFormConfigJson(''); };
@@ -132,7 +133,7 @@ export function ServicesPage() {
         throw new Error('formConfig must be an array');
       }
       return { ok: true, value: parsed };
-    } catch (err) {
+    } catch {
       toast.error('Request preferences must be valid JSON');
       return { ok: false };
     }
@@ -186,7 +187,7 @@ export function ServicesPage() {
         {isLoading ? (
           <TableSkeletonLoader />
         ) : error ? (
-          <div className="p-8 text-center"><p className="text-red-500">Failed to load services</p></div>
+          <div className="p-8 text-center"><p className="text-red-500">{apiErrorMessage(error, 'Failed to load services')}</p></div>
         ) : services.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-gray-400 text-lg">{search ? 'No services match your search' : 'No services yet'}</p>

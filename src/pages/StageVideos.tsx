@@ -22,6 +22,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { ProgramVideo, CreateVideoRequest, UpdateVideoRequest } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
 
 const emptyForm: Omit<CreateVideoRequest, 'stageId'> = {
   title: '', youtubeUrl: '', category: '', level: '', difficulty: '', equipment: '', duration: '', order: 0,
@@ -80,7 +81,7 @@ export function StageVideosPage() {
       queryClient.invalidateQueries({ queryKey: ['videos', sid] });
       closeModal();
     },
-    onError: () => toast.error('Failed to add video'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to add video')),
   });
 
   const updateMutation = useMutation({
@@ -91,7 +92,7 @@ export function StageVideosPage() {
       queryClient.invalidateQueries({ queryKey: ['videos', sid] });
       closeModal();
     },
-    onError: () => toast.error('Failed to update video'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update video')),
   });
 
   const deleteMutation = useMutation({
@@ -101,7 +102,7 @@ export function StageVideosPage() {
       queryClient.invalidateQueries({ queryKey: ['videos', sid] });
       setDeleteTarget(null);
     },
-    onError: () => toast.error('Failed to delete video'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to delete video')),
   });
 
   const closeModal = () => { setIsModalOpen(false); setEditing(null); setForm(emptyForm); };
@@ -155,7 +156,7 @@ export function StageVideosPage() {
         {isLoading ? (
           <TableSkeleton />
         ) : error ? (
-          <div className="p-8 text-center"><p className="text-red-500">Failed to load videos</p></div>
+          <div className="p-8 text-center"><p className="text-red-500">{apiErrorMessage(error, 'Failed to load videos')}</p></div>
         ) : videos.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-gray-400 text-lg">No videos yet</p>

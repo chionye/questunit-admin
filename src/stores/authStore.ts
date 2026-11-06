@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '../types';
+import { queryClient } from '../lib/queryClient';
 
 interface AuthState {
   token: string | null;
@@ -18,8 +19,12 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       setAuth: (token: string, user: User | null) =>
         set({ token, user, isAuthenticated: true }),
-      logout: () =>
-        set({ token: null, user: null, isAuthenticated: false }),
+      logout: () => {
+        // Drop cached pages so the next person to sign in on this browser
+        // doesn't see the previous admin's data.
+        queryClient.clear();
+        set({ token: null, user: null, isAuthenticated: false });
+      },
     }),
     {
       name: 'questunit-auth',

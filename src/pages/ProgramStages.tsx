@@ -22,6 +22,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { ProgramStage, CreateStageRequest } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
 
 function TableSkeleton() {
   return (
@@ -84,7 +85,7 @@ export function ProgramStagesPage() {
       queryClient.invalidateQueries({ queryKey: ['stages', pid] });
       closeModal();
     },
-    onError: () => toast.error('Failed to create stage'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to create stage')),
   });
 
   const updateMutation = useMutation({
@@ -95,7 +96,7 @@ export function ProgramStagesPage() {
       queryClient.invalidateQueries({ queryKey: ['stages', pid] });
       closeModal();
     },
-    onError: () => toast.error('Failed to update stage'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update stage')),
   });
 
   const deleteMutation = useMutation({
@@ -105,7 +106,7 @@ export function ProgramStagesPage() {
       queryClient.invalidateQueries({ queryKey: ['stages', pid] });
       setDeleteTarget(null);
     },
-    onError: () => toast.error('Failed to delete stage'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to delete stage')),
   });
 
   const closeModal = () => { setIsModalOpen(false); setEditing(null); setForm({ title: '', shortTitle: '', order: 0 }); };
@@ -149,7 +150,7 @@ export function ProgramStagesPage() {
         {isLoading ? (
           <TableSkeleton />
         ) : error ? (
-          <div className="p-8 text-center"><p className="text-red-500">Failed to load stages</p></div>
+          <div className="p-8 text-center"><p className="text-red-500">{apiErrorMessage(error, 'Failed to load stages')}</p></div>
         ) : stages.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-gray-400 text-lg">No stages yet</p>

@@ -43,8 +43,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { AppVersion, CreateAppVersionRequest, UpdateAppVersionRequest } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
+
+type AppChoice = 'renderer' | 'request' | 'both';
+
+const APP_LABELS: Record<AppChoice, string> = {
+  renderer: 'Renderer',
+  request: 'Request',
+  both: 'Both apps',
+};
 
 const emptyForm = {
+  app: 'renderer' as AppChoice,
   platform: 'ios' as 'ios' | 'android',
   version: '',
   minimumVersion: '1.0.0',
@@ -59,6 +69,7 @@ function AppVersionsTableSkeleton() {
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead>App</TableHead>
           <TableHead>Platform</TableHead>
           <TableHead>Version</TableHead>
           <TableHead>Min Version</TableHead>
@@ -70,6 +81,7 @@ function AppVersionsTableSkeleton() {
       <TableBody>
         {Array.from({ length: 2 }).map((_, i) => (
           <TableRow key={i}>
+            <TableCell><Skeleton className="h-4 w-16" /></TableCell>
             <TableCell><Skeleton className="h-4 w-16" /></TableCell>
             <TableCell><Skeleton className="h-4 w-20" /></TableCell>
             <TableCell><Skeleton className="h-4 w-20" /></TableCell>
@@ -109,7 +121,7 @@ export function AppVersionsPage() {
       queryClient.invalidateQueries({ queryKey: ['app-versions'] });
       closeModal();
     },
-    onError: () => toast.error('Failed to create app version'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to create app version')),
   });
 
   const updateMutation = useMutation({
@@ -120,7 +132,7 @@ export function AppVersionsPage() {
       queryClient.invalidateQueries({ queryKey: ['app-versions'] });
       closeModal();
     },
-    onError: () => toast.error('Failed to update app version'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update app version')),
   });
 
   const deleteMutation = useMutation({
@@ -130,7 +142,7 @@ export function AppVersionsPage() {
       queryClient.invalidateQueries({ queryKey: ['app-versions'] });
       setDeleteTarget(null);
     },
-    onError: () => toast.error('Failed to delete app version'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to delete app version')),
   });
 
   const closeModal = () => {
@@ -148,6 +160,7 @@ export function AppVersionsPage() {
   const openEdit = (v: AppVersion) => {
     setEditingVersion(v);
     setForm({
+      app: v.app ?? 'both',
       platform: v.platform,
       version: v.version,
       minimumVersion: v.minimumVersion || '1.0.0',
@@ -196,7 +209,7 @@ export function AppVersionsPage() {
           {isLoading ? (
             <AppVersionsTableSkeleton />
           ) : error ? (
-            <div className="p-6 text-center text-muted-foreground">Failed to load app versions</div>
+            <div className="p-6 text-center text-muted-foreground">{apiErrorMessage(error, 'Failed to load app versions')}</div>
           ) : versions.length === 0 ? (
             <div className="p-6 text-center text-muted-foreground">
               No app versions configured yet. Create one to start prompting users to update.
@@ -205,6 +218,7 @@ export function AppVersionsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>App</TableHead>
                   <TableHead>Platform</TableHead>
                   <TableHead>Latest Version</TableHead>
                   <TableHead className="hidden md:table-cell">Min Version</TableHead>
@@ -218,7 +232,8 @@ export function AppVersionsPage() {
               <TableBody>
                 {versions.map((v) => (
                   <TableRow key={v.id}>
-                    <TableCell className="font-medium capitalize">{v.platform}</TableCell>
+                    <TableCell className="font-medium">{APP_LABELS[v.app ?? 'both']}</TableCell>
+                    <TableCell className="capitalize">{v.platform === 'ios' ? 'iOS' : v.platform}</TableCell>
                     <TableCell className="font-mono">{v.version}</TableCell>
                     <TableCell className="hidden md:table-cell font-mono">{v.minimumVersion || '—'}</TableCell>
                     <TableCell className="hidden md:table-cell font-mono">{v.buildNumber || '—'}</TableCell>
@@ -257,8 +272,10 @@ export function AppVersionsPage() {
         </div>
 
         <p className="mt-4 text-xs text-muted-foreground">
-          Users running a version older than the latest will be prompted to update on app open.
-          If the user's version is below the minimum version, the update is forced.
+          Each app checks for the newest row matching its own app and platform, and falls back to the newest
+          "Both apps" row. Users running a version older than the latest are prompted to update on app open;
+          below the minimum version (or when marked Required) the update is forced. Apps older than 1.7.14 only
+          read "Both apps" rows.
         </p>
       </div>
 
@@ -274,6 +291,21 @@ export function AppVersionsPage() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="app">App *</Label>
+              <Select
+                value={form.app}
+                onValueChange={(v) => setForm({ ...form, app: v as AppChoice })}>
+                <SelectTrigger id="app">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="renderer">Renderer</SelectItem>
+                  <SelectItem value="request">Request</SelectItem>
+                  <SelectItem value="both">Both apps</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="platform">Platform *</Label>
               <Select
@@ -374,7 +406,8 @@ export function AppVersionsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete App Version</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the {deleteTarget?.platform} version {deleteTarget?.version}?
+              Are you sure you want to delete the {deleteTarget ? APP_LABELS[deleteTarget.app ?? 'both'] : ''}{' '}
+              {deleteTarget?.platform} version {deleteTarget?.version}?
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
